@@ -1,18 +1,15 @@
 use dezero::functions::{FType, Function};
-use dezero::variable::VBox;
-use dezero::{add, exp, square};
+use dezero::variable::Variable;
+use dezero::{add, exp, square, var};
 
 fn main() {
-    let x = VBox::new(2.);
-    let y = VBox::new(3.);
-    println!("x: {}\ny: {}", x, y);
+    let x = var!(2.);
+    let a = square!(x);
+    let y = add!(square!(a), square!(a));
+    y.backward();
 
-    let z = add!(add!(x, x), x);
-
-    z.backward();
-    println!("{}", z);
-    println!("{}", x);
-    println!("{}", y);
+    println!("{}", y.get_data());
+    println!("{}", x.get_grad());
 }
 
 #[cfg(test)]
@@ -21,7 +18,7 @@ mod test {
 
     #[test]
     fn square_backward_test() {
-        let x = VBox::new(3.);
+        let x = Variable::new(3.);
         let y = square!(x);
         y.backward();
         assert_eq!(x.get_grad(), 6.);
@@ -29,16 +26,16 @@ mod test {
 
     #[test]
     fn add_test() {
-        let x0 = VBox::new(2.);
-        let x1 = VBox::new(3.);
+        let x0 = Variable::new(2.);
+        let x1 = Variable::new(3.);
         let y = add!(x0, x1);
         assert_eq!(y.get_data(), 5.);
     }
 
     #[test]
     fn square_add_test() {
-        let x = VBox::new(2.);
-        let y = VBox::new(3.);
+        let x = Variable::new(2.);
+        let y = Variable::new(3.);
         let z = add!(square!(x), square!(y));
         z.backward();
         assert_eq!(z.get_data(), 13.);
@@ -48,7 +45,7 @@ mod test {
 
     #[test]
     fn add_backward_test() {
-        let x = VBox::new(3.);
+        let x = Variable::new(3.);
         let y = add!(x, x);
         y.backward();
         assert_eq!(x.get_grad(), 2.);
@@ -56,7 +53,7 @@ mod test {
 
     #[test]
     fn clear_grad_test() {
-        let x = VBox::new(3.);
+        let x = Variable::new(3.);
         let y = add!(x, x);
         y.backward();
         assert_eq!(x.get_grad(), 2.);

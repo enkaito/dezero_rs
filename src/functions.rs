@@ -1,16 +1,14 @@
-use crate::variable::{VBox, WeakVBox};
-use std::rc::Rc;
+use crate::variable::{Variable, WeakVBox};
+use std::{hash::Hash, rc::Rc};
 
-#[derive(Debug)]
 pub enum FType {
     Square,
     Exp,
     Add,
 }
 
-#[derive(Debug)]
 pub struct Function {
-    inputs: Option<Vec<VBox>>,
+    inputs: Option<Vec<Variable>>,
     outputs: Option<Vec<WeakVBox>>,
     ftype: FType,
     generation: u32,
@@ -30,7 +28,7 @@ impl Function {
         self.generation
     }
 
-    pub fn clone_input(&self) -> Vec<VBox> {
+    pub fn clone_input(&self) -> Vec<Variable> {
         self.inputs.clone().unwrap()
     }
 
@@ -38,10 +36,10 @@ impl Function {
         self.outputs.clone().unwrap()
     }
 
-    pub fn call(mut self, input: &[VBox]) -> Vec<VBox> {
+    pub fn call(mut self, input: &[Variable]) -> Vec<Variable> {
         let x = input.iter().map(|i| i.get_data()).collect();
         let y = self.forward(x);
-        let outputs: Vec<VBox> = y.iter().map(|&y| VBox::new(y)).collect();
+        let outputs: Vec<Variable> = y.iter().map(|&y| Variable::new(y)).collect();
         self.inputs = Some(input.into());
         self.outputs = Some(outputs.iter().map(|o| o.clone().downgrade()).collect());
 
@@ -99,4 +97,21 @@ macro_rules! add {
         let func = Function::new(FType::Add);
         func.call(&[$x.clone(), $y.clone()])[0].clone()
     }};
+}
+
+#[derive(Clone)]
+pub struct FuncBox(pub Rc<Function>);
+
+impl PartialEq for FuncBox {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for FuncBox {}
+
+impl Hash for FuncBox {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_usize(Rc::as_ptr(&self.0) as usize);
+    }
 }

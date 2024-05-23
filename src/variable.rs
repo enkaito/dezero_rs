@@ -1,23 +1,23 @@
-use crate::functions::Function;
+use crate::functions::{FuncBox, Function};
 
 use std::{
     cell::RefCell,
+    collections::HashSet,
     fmt::Display,
     rc::{Rc, Weak},
 };
 
-#[derive(Debug)]
-struct Variable {
+struct VariableData {
     data: f32,
     grad: Option<f32>,
-    creator: Option<Rc<Function>>,
+    creator: Option<FuncBox>,
     generation: u32,
 }
 
-#[derive(Clone, Debug)]
-pub struct VBox(Rc<RefCell<Variable>>);
+#[derive(Clone)]
+pub struct Variable(Rc<RefCell<VariableData>>);
 
-impl Display for VBox {
+impl Display for Variable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -31,9 +31,9 @@ impl Display for VBox {
     }
 }
 
-impl VBox {
-    pub fn new(data: f32) -> VBox {
-        VBox(Rc::new(RefCell::new(Variable {
+impl Variable {
+    pub fn new(data: f32) -> Variable {
+        Variable(Rc::new(RefCell::new(VariableData {
             data,
             grad: None,
             creator: None,
@@ -56,7 +56,7 @@ impl VBox {
         v.borrow().grad
     }
 
-    pub fn get_creator(&self) -> Option<Rc<Function>> {
+    pub fn get_creator(&self) -> Option<FuncBox> {
         self.0.clone().borrow().creator.clone()
     }
 
@@ -78,7 +78,7 @@ impl VBox {
         let tmp = self.0.as_ref();
         let mut v = tmp.borrow_mut();
         v.generation = func.get_gen() + 1;
-        v.creator = Some(func);
+        v.creator = Some(FuncBox(func));
     }
 
     pub fn backward(&self) {
@@ -86,11 +86,16 @@ impl VBox {
             self.set_grad(1.);
         }
 
+        let mut funcs = Vec::new();
+        let mut seen_set = HashSet::new();
+
+        add_func(&mut funcs, &mut seen_set, self.get_creator().unwrap());
+
         let mut funcs = vec![self.get_creator().unwrap()];
         while let Some(f) = funcs.pop() {
-            let x = f.clone_input();
-            let y = f.clone_output().iter().map(|y| y.get_grad()).collect();
-            let gxs = f.backward(y);
+            let x = f.0.clone_input();
+            let y = f.0.clone_output().iter().map(|y| y.get_grad()).collect();
+            let gxs = f.0.backward(y);
 
             for (x, gx) in x.iter().zip(gxs.iter()) {
                 if let Some(gx_old) = x.get_option_grad() {
@@ -100,7 +105,7 @@ impl VBox {
                 }
 
                 if let Some(x_creator) = x.get_creator() {
-                    funcs.push(x_creator)
+                    add_func(&mut funcs, &mut seen_set, x_creator)
                 }
             }
         }
@@ -111,8 +116,8 @@ impl VBox {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct WeakVBox(Weak<RefCell<Variable>>);
+#[derive(Clone)]
+pub struct WeakVBox(Weak<RefCell<VariableData>>);
 
 impl WeakVBox {
     fn get_grad(&self) -> f32 {
@@ -121,4 +126,19 @@ impl WeakVBox {
         let x = v.borrow().grad.unwrap();
         x
     }
+}
+
+fn add_func(funcs: &mut Vec<FuncBox>, seen_set: &mut HashSet<FuncBox>, f: FuncBox) {
+    if !seen_set.contains(&f) {
+        funcs.push(f.clone());
+        seen_set.insert(f);
+        funcs.sort_by(|f, g| f.0.get_gen().cmp(&g.0.get_gen()))
+    }
+}
+
+#[macro_export]
+macro_rules! var {
+    ($x: expr) => {
+        Variable::new($x)
+    };
 }
