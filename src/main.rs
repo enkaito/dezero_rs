@@ -8,7 +8,7 @@ use std::{
 struct Variable {
     data: f32,
     grad: Option<f32>,
-    creator: Option<Function>,
+    creator: Option<Rc<Function>>,
 }
 
 #[derive(Clone, Debug)]
@@ -34,7 +34,7 @@ impl VBox {
         v.borrow().grad
     }
 
-    fn get_creator(&self) -> Option<Function> {
+    fn get_creator(&self) -> Option<Rc<Function>> {
         self.0.clone().borrow().creator.clone()
     }
 
@@ -43,7 +43,7 @@ impl VBox {
         v.borrow_mut().grad = Some(grad);
     }
 
-    fn set_creator(&self, creator: Function) {
+    fn set_creator(&self, creator: Rc<Function>) {
         let v = self.0.as_ref();
         v.borrow_mut().creator = Some(creator);
     }
@@ -121,7 +121,9 @@ impl Function {
         let output = VBox::new(y);
         self.input = Some(input.clone());
         self.output = Some(output.clone().downgrade());
-        output.set_creator(self);
+
+        let to_self = Rc::new(self);
+        output.set_creator(to_self);
         output
     }
 
