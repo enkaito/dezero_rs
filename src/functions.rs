@@ -1,4 +1,4 @@
-use crate::variable::{Variable, WeakVBox};
+use crate::variable::{VBox, WeakVBox};
 use std::{hash::Hash, rc::Rc};
 
 pub enum FType {
@@ -8,7 +8,7 @@ pub enum FType {
 }
 
 pub struct Function {
-    inputs: Option<Vec<Variable>>,
+    inputs: Option<Vec<VBox>>,
     outputs: Option<Vec<WeakVBox>>,
     ftype: FType,
     generation: u32,
@@ -28,7 +28,7 @@ impl Function {
         self.generation
     }
 
-    pub fn clone_input(&self) -> Vec<Variable> {
+    pub fn clone_input(&self) -> Vec<VBox> {
         self.inputs.clone().unwrap()
     }
 
@@ -36,17 +36,19 @@ impl Function {
         self.outputs.clone().unwrap()
     }
 
-    pub fn call(mut self, input: &[Variable]) -> Vec<Variable> {
+    pub fn call(mut self, input: &[VBox], enable_backprop: bool) -> Vec<VBox> {
         let x = input.iter().map(|i| i.get_data()).collect();
         let y = self.forward(x);
-        let outputs: Vec<Variable> = y.iter().map(|&y| Variable::new(y)).collect();
+        let outputs: Vec<VBox> = y.iter().map(|&y| VBox::new(y)).collect();
         self.inputs = Some(input.into());
         self.outputs = Some(outputs.iter().map(|o| o.clone().downgrade()).collect());
 
-        self.generation = input.iter().map(|x| x.get_gen()).max().unwrap();
-        let to_self = Rc::new(self);
-        for output in outputs.iter() {
-            output.set_creator(to_self.clone())
+        if enable_backprop {
+            self.generation = input.iter().map(|x| x.get_gen()).max().unwrap();
+            let to_self = Rc::new(self);
+            for output in outputs.iter() {
+                output.set_creator(to_self.clone())
+            }
         }
         outputs
     }
@@ -75,30 +77,6 @@ impl Function {
     }
 }
 
-#[macro_export]
-macro_rules! square {
-    ($x: expr) => {{
-        let func = Function::new(FType::Square);
-        func.call(&[$x.clone()])[0].clone()
-    }};
-}
-
-#[macro_export]
-macro_rules! exp {
-    ($x: expr) => {{
-        let func = Function::new(FType::Exp);
-        func.call(&[$x.clone()])[0].clone()
-    }};
-}
-
-#[macro_export]
-macro_rules! add {
-    ($x: expr, $y: expr) => {{
-        let func = Function::new(FType::Add);
-        func.call(&[$x.clone(), $y.clone()])[0].clone()
-    }};
-}
-
 #[derive(Clone)]
 pub struct FuncBox(pub Rc<Function>);
 
@@ -113,5 +91,17 @@ impl Eq for FuncBox {}
 impl Hash for FuncBox {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         state.write_usize(Rc::as_ptr(&self.0) as usize);
+    }
+}
+
+impl Ord for FuncBox {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.get_gen().cmp(&other.0.get_gen())
+    }
+}
+
+impl PartialOrd for FuncBox {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
