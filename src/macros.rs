@@ -1,17 +1,4 @@
 #[macro_export]
-macro_rules! square {
-    ($x: expr) => {{
-        let func = $crate::functions::Function::new($crate::functions::FType::Square);
-        func.call(&[$x.clone()], true)[0].clone()
-    }};
-
-    ($x: expr, $backprop: expr) => {{
-        let func = $crate::functions::Function::new($crate::functions::FType::Square);
-        func.call(&[$x.clone()], $backprop)[0].clone()
-    }};
-}
-
-#[macro_export]
 macro_rules! exp {
     ($x: expr) => {{
         let func = $crate::functions::Function::new($crate::functions::FType::Exp);

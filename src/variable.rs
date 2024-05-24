@@ -1,5 +1,6 @@
+use crate::array::Array;
 use crate::functions::{FType, FuncBox, Function};
-mod operations;
+mod var_ops;
 
 use std::{
     cell::RefCell,
@@ -9,9 +10,8 @@ use std::{
 
 #[allow(dead_code)]
 struct Variable {
-    name: Option<String>,
-    data: f32,
-    grad: Option<f32>,
+    array: Array,
+    grad: Option<Array>,
     creator: Option<FuncBox>,
     generation: u32,
 }
@@ -19,61 +19,34 @@ struct Variable {
 #[derive(Clone)]
 pub struct VBox(Rc<RefCell<Variable>>);
 
-impl std::fmt::Display for VBox {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut string = format!("Variable({}", self.get_data());
-        match self.get_option_name() {
-            None => {}
-            Some(n) => string += &format!(", name: {n}"),
-        }
-        match self.get_option_grad() {
-            None => {}
-            Some(g) => string += &format!(", grad: {g}"),
-        }
-        string += ")";
-        write!(f, "{}", string)
-    }
-}
-
 impl VBox {
-    pub fn new(data: f32) -> VBox {
+    pub fn new(array: Array) -> VBox {
         VBox(Rc::new(RefCell::new(Variable {
-            name: None,
-            data,
+            array,
             grad: None,
             creator: None,
             generation: 0,
         })))
     }
 
-    pub fn new_with_name(data: f32, name: &str) -> VBox {
-        VBox(Rc::new(RefCell::new(Variable {
-            name: Some(name.to_string()),
-            data,
-            grad: None,
-            creator: None,
-            generation: 0,
-        })))
+    pub fn get_array(&self) -> Array {
+        let v = self.0.as_ref();
+        v.borrow().array.clone()
     }
 
-    pub fn get_data(&self) -> f32 {
+    pub fn get_shape(&self) -> Vec<usize> {
         let v = self.0.as_ref();
-        v.borrow().data
+        v.borrow().array.get_shape().clone()
     }
 
-    pub fn get_grad(&self) -> f32 {
+    pub fn get_grad(&self) -> Array {
         let v = self.0.as_ref();
-        v.borrow().grad.unwrap()
+        v.borrow().grad.clone().unwrap()
     }
 
-    pub fn get_option_grad(&self) -> Option<f32> {
+    pub fn get_option_grad(&self) -> Option<Array> {
         let v = self.0.as_ref();
-        v.borrow().grad
-    }
-
-    fn get_option_name(&self) -> Option<String> {
-        let v = self.0.as_ref();
-        v.borrow().name.clone()
+        v.borrow().grad.clone()
     }
 
     pub fn get_creator(&self) -> Option<FuncBox> {
@@ -84,14 +57,17 @@ impl VBox {
         self.0.clone().borrow().generation
     }
 
-    pub fn set_data(&self, data: f32) {
+    pub fn set_data(&self, data: Array) {
         let v = self.0.as_ref();
-        v.borrow_mut().data = data;
+        v.borrow_mut().array.set_data(data);
     }
 
-    pub fn set_grad(&self, grad: f32) {
+    pub fn set_grad(&self, grad: Array) {
         let v = self.0.as_ref();
-        v.borrow_mut().grad = Some(grad);
+        match &mut v.borrow_mut().grad {
+            Some(grad_old) => grad_old.set_data(grad),
+            x @ None => *x = Some(grad),
+        };
     }
 
     pub fn clear_grad(&self) {
@@ -112,7 +88,7 @@ impl VBox {
 
     pub fn backward_with_option(&self, retain_grad: bool) {
         if self.get_option_grad().is_none() {
-            self.set_grad(1.);
+            self.set_grad(Array::ones(&self.get_shape()));
         }
 
         let mut funcs = BinaryHeap::new();
@@ -127,11 +103,11 @@ impl VBox {
             let y = f.0.clone_output().iter().map(|y| y.get_grad()).collect();
             let gxs = f.0.backward(y);
 
-            for (x, gx) in x.iter().zip(gxs.iter()) {
+            for (x, gx) in x.iter().zip(gxs.into_iter()) {
                 if let Some(gx_old) = x.get_option_grad() {
-                    x.set_grad(gx_old + gx)
+                    x.set_grad(gx_old + &gx)
                 } else {
-                    x.set_grad(*gx);
+                    x.set_grad(gx);
                 }
 
                 if let Some(x_creator) = x.get_creator() {
@@ -163,7 +139,7 @@ impl WeakVBox {
         VBox(self.0.upgrade().unwrap())
     }
 
-    fn get_grad(&self) -> f32 {
+    fn get_grad(&self) -> Array {
         let v = self.upgrade();
         v.get_grad()
     }
@@ -177,6 +153,6 @@ impl WeakVBox {
 #[macro_export]
 macro_rules! var {
     ($x: expr) => {
-        &$crate::variable::VBox::new($x as f32)
+        &$crate::variable::VBox::new($crate::array::Array::new(vec![$x as f32], vec![]))
     };
 }

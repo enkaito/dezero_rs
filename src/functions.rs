@@ -1,8 +1,10 @@
-use crate::variable::{VBox, WeakVBox};
+use crate::{
+    array::Array,
+    variable::{VBox, WeakVBox},
+};
 use std::{hash::Hash, rc::Rc};
 
 pub enum FType {
-    Square,
     Exp,
     Add,
     Mul,
@@ -42,9 +44,9 @@ impl Function {
     }
 
     pub fn call(mut self, input: &[VBox], enable_backprop: bool) -> Vec<VBox> {
-        let x = input.iter().map(|i| i.get_data()).collect();
+        let x = input.iter().map(|i| i.get_array()).collect();
         let y = self.forward(x);
-        let outputs: Vec<VBox> = y.iter().map(|&y| VBox::new(y)).collect();
+        let outputs: Vec<VBox> = y.into_iter().map(|y| VBox::new(y)).collect();
         self.inputs = Some(input.into());
         self.outputs = Some(outputs.iter().map(|o| o.clone().downgrade()).collect());
 
@@ -58,36 +60,34 @@ impl Function {
         outputs
     }
 
-    fn forward(&self, x: Vec<f32>) -> Vec<f32> {
+    fn forward(&self, x: Vec<Array>) -> Vec<Array> {
         match &self.ftype {
-            FType::Square => vec![x[0].powi(2)],
             FType::Exp => vec![x[0].exp()],
-            FType::Add => vec![x[0] + x[1]],
-            FType::Mul => vec![x[0] * x[1]],
-            FType::Neg => vec![-x[0]],
-            FType::Sub => vec![x[0] - x[1]],
-            FType::Div => vec![x[0] / x[1]],
+            FType::Add => vec![&x[0] + &x[1]],
+            FType::Mul => vec![&x[0] * &x[1]],
+            FType::Neg => vec![-&x[0]],
+            FType::Sub => vec![&x[0] - &x[1]],
+            FType::Div => vec![&x[0] / &x[1]],
             FType::Pow(c) => vec![x[0].powf(*c)],
         }
     }
 
-    pub fn backward(&self, gy: Vec<f32>) -> Vec<f32> {
-        let x: Vec<f32> = self
+    pub fn backward(&self, gy: Vec<Array>) -> Vec<Array> {
+        let x: Vec<Array> = self
             .inputs
             .as_ref()
             .unwrap()
             .iter()
-            .map(|x| x.get_data())
+            .map(|x| x.get_array())
             .collect();
         match &self.ftype {
-            FType::Square => vec![2. * x[0] * gy[0]],
-            FType::Exp => vec![x[0].exp() * gy[0]],
-            FType::Add => vec![gy[0], gy[0]],
-            FType::Mul => vec![x[1] * gy[0], x[0] * gy[0]],
-            FType::Neg => vec![-gy[0]],
-            FType::Sub => vec![gy[0], -gy[0]],
-            FType::Div => vec![gy[0] / x[1], -x[0] / x[1].powi(2) * gy[0]],
-            FType::Pow(c) => vec![c * x[0].powf(c - 1.) * gy[0]],
+            FType::Exp => vec![&x[0].exp() * &gy[0]],
+            FType::Add => vec![gy[0].clone(), gy[0].clone()],
+            FType::Mul => vec![&x[1] * &gy[0], &x[0] * &gy[0]],
+            FType::Neg => vec![-&gy[0]],
+            FType::Sub => vec![gy[0].clone(), -&gy[0]],
+            FType::Div => vec![&gy[0] / &x[1], -&x[0] / &x[1].powf(2.) * &gy[0]],
+            FType::Pow(c) => vec![*c * x[0].powf(c - 1.) * &gy[0]],
         }
     }
 }

@@ -1,6 +1,5 @@
+use dezero::var;
 use dezero::VBox;
-#[allow(unused_imports)]
-use dezero::{add, exp, square, var};
 
 fn main() {
     let rosenbrock = |x0: &VBox, x1: &VBox| 100 * (x1 - x0.pow(2.)).pow(2.) + (x0 - 1).pow(2.);
@@ -16,25 +15,33 @@ fn main() {
 
         let y = rosenbrock(x0, x1);
 
+        println!("{}", y);
+
         x0.clear_grad();
         x1.clear_grad();
         y.backward();
 
-        x0.set_data(x0.get_data() - lr * x0.get_grad());
-        x1.set_data(x0.get_data() - lr * x0.get_grad());
+        x0.set_data(x0.get_array() - lr * x0.get_grad());
+        x1.set_data(x0.get_array() - lr * x0.get_grad());
     }
 }
 
 #[cfg(test)]
 mod test {
-    use dezero::{add, square, var, variable::VBox};
+    use dezero::{add, array0, var, VBox};
+
+    macro_rules! square {
+        ($x: expr) => {
+            $x.clone() * $x.clone()
+        };
+    }
 
     #[test]
     fn square_backward_test() {
         let x = var!(3.);
         let y = square!(x);
         y.backward();
-        assert_eq!(x.get_grad(), 6.);
+        assert_eq!(x.get_grad(), array0!(6));
     }
 
     #[test]
@@ -42,7 +49,7 @@ mod test {
         let x0 = var!(2.);
         let x1 = var!(3.);
         let y = add!(x0, x1);
-        assert_eq!(y.get_data(), 5.);
+        assert_eq!(y.get_array(), array0!(5));
     }
 
     #[test]
@@ -51,9 +58,9 @@ mod test {
         let y = var!(3.);
         let z = add!(square!(x), square!(y));
         z.backward();
-        assert_eq!(z.get_data(), 13.);
-        assert_eq!(x.get_grad(), 4.);
-        assert_eq!(y.get_grad(), 6.);
+        assert_eq!(z.get_array(), array0!(13));
+        assert_eq!(x.get_grad(), array0!(4));
+        assert_eq!(y.get_grad(), array0!(6));
     }
 
     #[test]
@@ -61,7 +68,7 @@ mod test {
         let x = var!(3.);
         let y = add!(x, x);
         y.backward();
-        assert_eq!(x.get_grad(), 2.);
+        assert_eq!(x.get_grad(), array0!(2));
     }
 
     #[test]
@@ -69,12 +76,12 @@ mod test {
         let x = var!(3.);
         let y = add!(x, x);
         y.backward();
-        assert_eq!(x.get_grad(), 2.);
+        assert_eq!(x.get_grad(), array0!(2.));
 
         x.clear_grad();
         let y = add!(add!(x, x), x);
         y.backward();
-        assert_eq!(x.get_grad(), 3.);
+        assert_eq!(x.get_grad(), array0!(3.));
     }
 
     #[test]
@@ -84,8 +91,8 @@ mod test {
         let y = add!(square!(a), square!(a));
         y.backward();
 
-        assert_eq!(y.get_data(), 32.);
-        assert_eq!(x.get_grad(), 64.);
+        assert_eq!(y.get_array(), array0!(32.));
+        assert_eq!(x.get_grad(), array0!(64.));
     }
 
     #[test]
@@ -100,8 +107,8 @@ mod test {
 
         assert_eq!(y.get_option_grad(), None);
         assert_eq!(t.get_option_grad(), None);
-        assert_eq!(x0.get_option_grad(), Some(2.));
-        assert_eq!(x1.get_option_grad(), Some(1.));
+        assert_eq!(x0.get_option_grad(), Some(array0!(2.)));
+        assert_eq!(x1.get_option_grad(), Some(array0!(1.)));
     }
 
     #[test]
@@ -113,9 +120,9 @@ mod test {
         let y = a * b + c;
         y.backward();
 
-        assert_eq!(y.get_data(), 7.);
-        assert_eq!(a.get_grad(), 2.);
-        assert_eq!(b.get_grad(), 3.);
+        assert_eq!(y.get_array(), array0!(7.));
+        assert_eq!(a.get_grad(), array0!(2.));
+        assert_eq!(b.get_grad(), array0!(3.));
     }
 
     #[test]
@@ -126,8 +133,8 @@ mod test {
 
         z.backward();
 
-        assert_eq!(x.get_grad(), 2.);
-        assert_eq!(y.get_grad(), 2.);
+        assert_eq!(x.get_grad(), array0!(2.));
+        assert_eq!(y.get_grad(), array0!(2.));
     }
 
     #[test]
@@ -139,8 +146,8 @@ mod test {
         let z = matyas(x, y);
         z.backward();
 
-        assert!((x.get_grad() - 0.04) < 1e-8);
-        assert!((y.get_grad() - 0.04) < 1e-8);
+        assert!((x.get_grad() - 0.04).sum() < 1e-8);
+        assert!((y.get_grad() - 0.04).sum() < 1e-8);
     }
 
     #[test]
@@ -158,7 +165,7 @@ mod test {
         let z = gp(x, y);
         z.backward();
 
-        assert!((x.get_grad() + 5376.) < 1e-8);
-        assert!((y.get_grad() - 8064.) < 1e-8);
+        assert!(x.get_grad().all_close(&array0!(-5376), 1e-8));
+        assert!((y.get_grad() - 8064.).sum() < 1e-8);
     }
 }

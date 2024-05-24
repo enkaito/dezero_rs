@@ -1,4 +1,4 @@
-use super::{FType, Function, VBox};
+use super::*;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 macro_rules! impl_op {
@@ -107,5 +107,17 @@ impl VBox {
     pub fn pow(&self, c: f32) -> VBox {
         let func = Function::new(FType::Pow(c.into()));
         func.call(&[self.clone()], true)[0].clone()
+    }
+}
+
+impl std::fmt::Display for VBox {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut string = format!("Variable({:?}", self.get_array().get_data());
+        match self.get_option_grad() {
+            None => {}
+            Some(g) => string += &format!(", grad: {:?}", g.get_data()),
+        }
+        string += ")";
+        write!(f, "{}", string)
     }
 }
