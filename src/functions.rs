@@ -5,6 +5,11 @@ pub enum FType {
     Square,
     Exp,
     Add,
+    Mul,
+    Neg,
+    Sub,
+    Div,
+    Pow(f32),
 }
 
 pub struct Function {
@@ -58,6 +63,11 @@ impl Function {
             FType::Square => vec![x[0].powi(2)],
             FType::Exp => vec![x[0].exp()],
             FType::Add => vec![x[0] + x[1]],
+            FType::Mul => vec![x[0] * x[1]],
+            FType::Neg => vec![-x[0]],
+            FType::Sub => vec![x[0] - x[1]],
+            FType::Div => vec![x[0] / x[1]],
+            FType::Pow(c) => vec![x[0].powf(*c)],
         }
     }
 
@@ -73,6 +83,11 @@ impl Function {
             FType::Square => vec![2. * x[0] * gy[0]],
             FType::Exp => vec![x[0].exp() * gy[0]],
             FType::Add => vec![gy[0], gy[0]],
+            FType::Mul => vec![x[1] * gy[0], x[0] * gy[0]],
+            FType::Neg => vec![-gy[0]],
+            FType::Sub => vec![gy[0], -gy[0]],
+            FType::Div => vec![gy[0] / x[1], -x[0] / x[1].powi(2) * gy[0]],
+            FType::Pow(c) => vec![c * x[0].powf(c - 1.) * gy[0]],
         }
     }
 }

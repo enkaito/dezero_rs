@@ -36,3 +36,16 @@ macro_rules! add {
         func.call(&[$x.clone(), $y.clone()], $backprop)[0].clone()
     }};
 }
+
+#[macro_export]
+macro_rules! mul {
+    ($x: expr, $y: expr) => {{
+        let func = $crate::functions::Function::new($crate::functions::FType::Mul);
+        func.call(&[$x.clone(), $y.clone()], true)[0].clone()
+    }};
+
+    ($x: expr, $y: expr, $backprop: expr) => {{
+        let func = $crate::functions::Function::new($crate::functions::FType::Mul);
+        func.call(&[$x.clone(), $y.clone()], $backprop)[0].clone()
+    }};
+}

@@ -1,9 +1,9 @@
-use crate::functions::{FuncBox, Function};
+use crate::functions::{FType, FuncBox, Function};
+mod operations;
 
 use std::{
     cell::RefCell,
     collections::{BinaryHeap, HashSet},
-    fmt::{format, write},
     rc::{Rc, Weak},
 };
 
@@ -21,7 +21,7 @@ pub struct VBox(Rc<RefCell<Variable>>);
 
 impl std::fmt::Display for VBox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut string = format!("Variable({})", self.get_data());
+        let mut string = format!("Variable({}", self.get_data());
         match self.get_option_name() {
             None => {}
             Some(n) => string += &format!(", name: {n}"),
@@ -172,6 +172,6 @@ impl WeakVBox {
 #[macro_export]
 macro_rules! var {
     ($x: expr) => {
-        $crate::variable::VBox::new($x)
+        $crate::variable::VBox::new($x as f32)
     };
 }
