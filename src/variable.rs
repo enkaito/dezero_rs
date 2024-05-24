@@ -84,6 +84,11 @@ impl VBox {
         self.0.clone().borrow().generation
     }
 
+    pub fn set_data(&self, data: f32) {
+        let v = self.0.as_ref();
+        v.borrow_mut().data = data;
+    }
+
     pub fn set_grad(&self, grad: f32) {
         let v = self.0.as_ref();
         v.borrow_mut().grad = Some(grad);
@@ -172,6 +177,6 @@ impl WeakVBox {
 #[macro_export]
 macro_rules! var {
     ($x: expr) => {
-        $crate::variable::VBox::new($x as f32)
+        &$crate::variable::VBox::new($x as f32)
     };
 }

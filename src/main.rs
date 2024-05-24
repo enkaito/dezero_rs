@@ -3,21 +3,26 @@ use dezero::VBox;
 use dezero::{add, exp, square, var};
 
 fn main() {
-    let matyas = |x: &VBox, y: &VBox| 0.26 * (x.pow(2.) + y.pow(2.)) - 0.48 * x * y;
+    let rosenbrock = |x0: &VBox, x1: &VBox| 100 * (x1 - x0.pow(2.)).pow(2.) + (x0 - 1).pow(2.);
 
-    let x = &var!(1.);
-    let y = &var!(1.);
-    let z = matyas(x, y);
-    z.backward();
+    let x0 = var!(0);
+    let x1 = var!(2);
 
-    println!("{}", x);
-    println!("{}", y);
-    println!("{}", z);
+    let lr = 0.001;
+    let max_iter = 100;
 
-    let x = &var!(1.);
-    let z = x.pow(2.);
-    z.backward();
-    println!("{}", x);
+    for _ in 0..max_iter {
+        println!("{}, {}", x0, x1);
+
+        let y = rosenbrock(x0, x1);
+
+        x0.clear_grad();
+        x1.clear_grad();
+        y.backward();
+
+        x0.set_data(x0.get_data() - lr * x0.get_grad());
+        x1.set_data(x0.get_data() - lr * x0.get_grad());
+    }
 }
 
 #[cfg(test)]
@@ -101,9 +106,9 @@ mod test {
 
     #[test]
     fn overload_test() {
-        let a = &var!(3.);
-        let b = &var!(2.);
-        let c = &var!(1.);
+        let a = var!(3.);
+        let b = var!(2.);
+        let c = var!(1.);
 
         let y = a * b + c;
         y.backward();
