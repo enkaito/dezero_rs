@@ -14,6 +14,10 @@ pub enum FType {
     Powi(i32),
     Powf(f32),
     Reshape(Vec<usize>, Vec<usize>),
+    Transpose,
+    Sum(Vec<usize>),
+    SumAxis(usize, bool, usize),
+    Matmul,
 }
 
 pub struct Function {
@@ -72,7 +76,11 @@ impl Function {
             FType::Div => vec![&x[0] / &x[1]],
             FType::Powi(c) => vec![x[0].powi(*c)],
             FType::Powf(c) => vec![x[0].powf(*c)],
-            FType::Reshape(_, shape) => vec![x[0].reshape(shape.clone())],
+            FType::Reshape(_, shape) => vec![x[0].reshape(shape)],
+            FType::Transpose => vec![x[0].transpose()],
+            FType::Sum(_) => vec![x[0].sum()],
+            FType::SumAxis(axis, keep_dims, _) => vec![x[0].sum_axis(*axis, *keep_dims)],
+            FType::Matmul => vec![x[0].dot(&x[1])],
         }
     }
 
@@ -93,7 +101,11 @@ impl Function {
             FType::Div => vec![&gy[0] / &x[1], -&x[0] / &x[1].powf(2.) * &gy[0]],
             FType::Powi(c) => vec![*c as f32 * x[0].powi(c - 1) * &gy[0]],
             FType::Powf(c) => vec![*c * x[0].powf(c - 1.) * &gy[0]],
-            FType::Reshape(shape, _) => vec![gy[0].reshape(shape.clone())],
+            FType::Reshape(shape, _) => vec![gy[0].reshape(shape)],
+            FType::Transpose => vec![gy[0].transpose()],
+            FType::Sum(shape) => vec![gy[0].broadcast_scaler(shape)],
+            FType::SumAxis(axis, keep_dims, dup) => vec![gy[0].broadcast(*axis, *keep_dims, *dup)],
+            FType::Matmul => vec![gy[0].dot(&x[1].transpose()), x[0].transpose().dot(&gy[0])],
         }
     }
 }

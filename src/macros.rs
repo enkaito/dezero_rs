@@ -1,8 +1,13 @@
 #[macro_export]
 macro_rules! eval {
-    ($body: block) => {
+    () => {
         *$crate::ENABLE_BACKPROP.lock().unwrap() = false;
-        $body;
+    };
+}
+
+#[macro_export]
+macro_rules! train {
+    () => {
         *$crate::ENABLE_BACKPROP.lock().unwrap() = true;
     };
 }

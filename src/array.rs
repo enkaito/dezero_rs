@@ -1,5 +1,8 @@
 mod macros;
 mod ops;
+mod utils;
+
+use rand::{distributions::Standard, Rng};
 use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -19,16 +22,35 @@ impl Array {
         Array { data, shape, size }
     }
 
-    pub fn zeros(shape: Vec<usize>) -> Array {
+    pub fn zeros(shape: &[usize]) -> Array {
         let size = shape.iter().product();
         let data = vec![0.; size];
-        Array { data, shape, size }
+        Array {
+            data,
+            shape: shape.to_vec(),
+            size,
+        }
     }
 
-    pub fn ones(shape: Vec<usize>) -> Array {
+    pub fn ones(shape: &[usize]) -> Array {
         let size = shape.iter().product();
         let data = vec![1.; size];
-        Array { data, shape, size }
+        Array {
+            data,
+            shape: shape.to_vec(),
+            size,
+        }
+    }
+
+    pub fn rand(shape: &[usize]) -> Array {
+        let size = shape.iter().product();
+        let rng = rand::thread_rng();
+        let data = rng.sample_iter(Standard).take(size).collect();
+        Array {
+            data,
+            shape: shape.to_vec(),
+            size,
+        }
     }
 
     pub fn get_data(&self) -> &Vec<f32> {

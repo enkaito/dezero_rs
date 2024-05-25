@@ -1,19 +1,23 @@
 #[allow(unused_imports)]
-use dezero::{array0, array1, array2, array_with_shape, eval, var, Array, VBox};
+use dezero::{array0, array1, array2, array_with_shape, eval, scaler, var, Array, VBox};
 
 fn main() {
-    eval! {{
-        let x = VBox::new(array_with_shape!(1..=6, [2, 3]));
-        let y = x.reshape(vec![6]);
-        y.backward();
-        println!("{}", x);
-        println!("{}", y);
-    }}
+    let x = var!(Array::rand(&[2, 3]));
+    let y = var!(Array::ones(&[3, 4]));
+
+    let z = x.dot(&y);
+    z.backward();
+
+    println!("{}\n", x);
+    println!("{}\n", y);
+    println!("{}\n", z);
+    println!("shape: {:?}", z.get_shape())
 }
 
 #[cfg(test)]
 mod test {
-    use dezero::{array0, var, VBox};
+    #[allow(unused_imports)]
+    use dezero::{array0, array1, array2, array_with_shape, scaler, var, VBox};
 
     macro_rules! square {
         ($x: expr) => {
@@ -23,7 +27,7 @@ mod test {
 
     #[test]
     fn square_backward_test() {
-        let x = var!(3.);
+        let x = scaler!(3.);
         let y = square!(x);
         y.backward();
         assert_eq!(x.get_grad(), array0!(6));
@@ -31,16 +35,16 @@ mod test {
 
     #[test]
     fn add_test() {
-        let x0 = var!(2.);
-        let x1 = var!(3.);
+        let x0 = scaler!(2.);
+        let x1 = scaler!(3.);
         let y = x0 + x1;
         assert_eq!(y.get_array(), array0!(5));
     }
 
     #[test]
     fn square_add_test() {
-        let x = var!(2.);
-        let y = var!(3.);
+        let x = scaler!(2.);
+        let y = scaler!(3.);
         let z = square!(x) + square!(y);
         z.backward();
         assert_eq!(z.get_array(), array0!(13));
@@ -50,7 +54,7 @@ mod test {
 
     #[test]
     fn add_backward_test() {
-        let x = var!(3.);
+        let x = scaler!(3.);
         let y = x + x;
         y.backward();
         assert_eq!(x.get_grad(), array0!(2));
@@ -58,7 +62,7 @@ mod test {
 
     #[test]
     fn clear_grad_test() {
-        let x = var!(3.);
+        let x = scaler!(3.);
         let y = x + x;
         y.backward();
         assert_eq!(x.get_grad(), array0!(2.));
@@ -71,7 +75,7 @@ mod test {
 
     #[test]
     fn complex_graph_test() {
-        let x = var!(2.);
+        let x = scaler!(2.);
         let a = square!(x);
         let y = square!(a) + square!(a);
         y.backward();
@@ -82,8 +86,8 @@ mod test {
 
     #[test]
     fn grad_drop_test() {
-        let x0 = var!(1.);
-        let x1 = var!(1.);
+        let x0 = scaler!(1.);
+        let x1 = scaler!(1.);
 
         let t = x0 + x1;
         let y = x0 + &t;
@@ -98,9 +102,9 @@ mod test {
 
     #[test]
     fn overload_test() {
-        let a = var!(3.);
-        let b = var!(2.);
-        let c = var!(1.);
+        let a = scaler!(3.);
+        let b = scaler!(2.);
+        let c = scaler!(1.);
 
         let y = a * b + c;
         y.backward();
@@ -112,8 +116,8 @@ mod test {
 
     #[test]
     fn test_sphere() {
-        let x = var!(1.);
-        let y = var!(1.);
+        let x = scaler!(1.);
+        let y = scaler!(1.);
         let z = x.powi(2) + y.powi(2);
 
         z.backward();
@@ -126,13 +130,13 @@ mod test {
     fn test_matyas() {
         let matyas = |x: &VBox, y: &VBox| 0.26 * (x.powi(2) + y.powi(2)) - 0.48 * x * y;
 
-        let x = &var!(1.);
-        let y = &var!(1.);
+        let x = &scaler!(1.);
+        let y = &scaler!(1.);
         let z = matyas(x, y);
         z.backward();
 
-        assert!((x.get_grad() - 0.04).sum() < 1e-8);
-        assert!((y.get_grad() - 0.04).sum() < 1e-8);
+        assert!(x.get_grad().all_close(&array0!(0.04), 1e-8));
+        assert!(y.get_grad().all_close(&array0!(0.04), 1e-8));
     }
 
     #[test]
@@ -145,8 +149,8 @@ mod test {
                         * (18 - 32 * x + 12 * x.powi(2) + 48 * y - 36 * x * y + 27 * y.powi(2)))
         };
 
-        let x = &var!(1);
-        let y = &var!(1);
+        let x = &scaler!(1);
+        let y = &scaler!(1);
         let z = gp(x, y);
         z.backward();
 
@@ -158,8 +162,8 @@ mod test {
     fn rosenbrock_opt_test() {
         let rosenbrock = |x0: &VBox, x1: &VBox| 100 * (x1 - x0.powi(2)).powi(2) + (x0 - 1).powi(2);
 
-        let x0 = var!(0);
-        let x1 = var!(2);
+        let x0 = scaler!(0);
+        let x1 = scaler!(2);
 
         let lr = 0.001;
         let max_iter = 100;
@@ -181,5 +185,23 @@ mod test {
 
         assert!(x0.get_grad().all_close(&array0!(1), 1e-8));
         assert!(x1.get_grad().all_close(&array0!(1), 1e-8));
+    }
+
+    #[test]
+    fn reshape_test() {
+        let x = var!(array_with_shape!(0..6, [2, 3]));
+        let y = x.reshape(vec![6]);
+        y.backward();
+        assert_eq!(x.get_grad(), array_with_shape!([1; 6], [2, 3]));
+        assert_eq!(y.get_array(), array_with_shape!(0..6, [6]))
+    }
+
+    #[test]
+    fn transpose_test() {
+        let x = var!(array2!([[1, 2, 3], [4, 5, 6]]));
+        let y = x.transpose();
+        y.backward();
+        assert_eq!(x.get_grad(), array_with_shape!([1; 6], [2, 3]));
+        assert_eq!(y.get_array(), array_with_shape!([1, 4, 2, 5, 3, 6], [3, 2]))
     }
 }

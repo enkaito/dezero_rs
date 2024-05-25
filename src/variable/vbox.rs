@@ -84,7 +84,7 @@ impl VBox {
 
     pub fn backward_with_option(&self, retain_grad: bool) {
         if self.get_option_grad().is_none() {
-            self.set_grad(Array::ones(self.get_shape()));
+            self.set_grad(Array::ones(&self.get_shape()));
         }
 
         let mut funcs = BinaryHeap::new();
