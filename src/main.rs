@@ -2,16 +2,33 @@
 use dezero::{array0, array1, array2, array_with_shape, eval, scaler, var, Array, VBox};
 
 fn main() {
-    let x = var!(Array::rand(&[2, 3]));
-    let y = var!(Array::ones(&[3, 4]));
+    let x = var!(Array::rand(&[100, 1]));
+    let y = 5 + 2 * x + var!(Array::rand(&[100, 1]));
 
-    let z = x.dot(&y);
-    z.backward();
+    let w = var!(Array::zeros(&[1, 1]));
+    let b = var!(Array::zeros(&[]));
 
-    println!("{}\n", x);
-    println!("{}\n", y);
-    println!("{}\n", z);
-    println!("shape: {:?}", z.get_shape())
+    let pred = |x: &VBox| x.dot(&w) + b;
+    let mean_squared_error = |x: &VBox, y: &VBox| (x - y).powi(2).sum();
+
+    let lr = 0.1;
+    let iters = 100;
+
+    for _ in 0..iters {
+        let y_pred = pred(x);
+        let loss = mean_squared_error(&y, &y_pred);
+
+        w.clear_grad();
+        b.clear_grad();
+        loss.backward();
+
+        w.set_array(w.get_array() - lr * w.get_grad());
+        b.set_array(b.get_array() - lr * b.get_grad());
+
+        println!("w:\t{}", w);
+        println!("b:\t{}", b);
+        println!("loss:\t{}\n", loss);
+    }
 }
 
 #[cfg(test)]
@@ -179,8 +196,8 @@ mod test {
             x1.clear_grad();
             y.backward();
 
-            x0.set_data(x0.get_array() - lr * x0.get_grad());
-            x1.set_data(x0.get_array() - lr * x0.get_grad());
+            x0.set_array(x0.get_array() - lr * x0.get_grad());
+            x1.set_array(x0.get_array() - lr * x0.get_grad());
         }
 
         assert!(x0.get_grad().all_close(&array0!(1), 1e-8));

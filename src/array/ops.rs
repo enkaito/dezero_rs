@@ -1,4 +1,5 @@
 use super::Array;
+use core::panic;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 macro_rules! inner {
@@ -26,19 +27,23 @@ fn sum(data: &[f32], shape: &[usize], axis: usize) -> Vec<f32> {
     }
 }
 
-fn broadcast(data: &[f32], shape: &[usize], axis: usize, dup: usize) -> Vec<f32> {
-    match axis {
-        0 => data
-            .iter()
+// todo: change the function to take lists of axis and dup to execute the broadcast in one call.
+fn broadcast(data: &[f32], shape: &[usize], axis: &[usize], dup: &[usize]) -> Vec<f32> {
+    if axis.is_empty() {
+        return data.to_vec();
+    }
+
+    if axis[0] == 0 {
+        data.iter()
             .cycle()
             .take(data.len() * dup)
             .cloned()
-            .collect(),
-        _ => data
-            .chunks(data.len() / shape[0])
+            .collect()
+    } else {
+        data.chunks(data.len() / shape[0])
             .map(|x| broadcast(x, &shape[1..], axis - 1, dup))
             .flatten()
-            .collect(),
+            .collect()
     }
 }
 
@@ -90,6 +95,29 @@ impl Array {
         }
 
         Array::new(new_data, new_shape)
+    }
+
+    pub fn broadcast_to(&self, shape: &[usize]) -> Array {
+        if self.shape == shape {
+            return self.clone();
+        }
+        let tmp = vec![1; shape.len() - self.shape.len()];
+        let old_shape = tmp.iter().chain(&self.shape);
+
+        let mut data = self.data.clone();
+        let mut shape = self.shape.to_vec();
+        for (axis, (i, j)) in old_shape.zip(shape.iter_mut()).enumerate() {
+            match (*i, *j) {
+                (i, j) if i == j => {}
+                (1, dup) => {
+                    data = broadcast(&data, &shape, axis, dup);
+                    *j = dup;
+                }
+                _ => panic!("broadcast from {:?} to {:?} failed", self.shape, shape),
+            }
+        }
+
+        Array::new(data, shape.to_vec())
     }
 
     pub fn broadcast(&self, axis: usize, keep_dims: bool, dup: usize) -> Array {

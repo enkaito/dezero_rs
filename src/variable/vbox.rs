@@ -53,7 +53,7 @@ impl VBox {
         self.0.clone().borrow().generation
     }
 
-    pub fn set_data(&self, data: Array) {
+    pub fn set_array(&self, data: Array) {
         let v = self.0.as_ref();
         v.borrow_mut().array.set_data(data);
     }
