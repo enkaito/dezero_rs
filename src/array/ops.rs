@@ -1,4 +1,5 @@
-use super::*;
+use super::Array;
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 impl Array {
     pub fn exp(&self) -> Array {
@@ -30,16 +31,21 @@ impl Array {
         self.data.iter().sum()
     }
 
-    pub fn all_close(&self, rhs: &Array, tol: f32) -> bool {
-        self.get_shape() == rhs.get_shape()
-            && (self - rhs)
-                .data
-                .iter()
-                .try_for_each(|x| if x < &tol { Some(()) } else { None })
-                .is_some()
+    pub fn reshape(&self, new_shape: Vec<usize>) -> Array {
+        let new_size = new_shape.iter().product();
+        if self.size != new_size {
+            panic!("Cannot convert {:?} to {:?}", self.shape, new_shape)
+        }
+        Array {
+            data: self.data.clone(),
+            shape: new_shape,
+            size: self.size,
+        }
     }
 
-    pub fn all_close_f(&self, rhs: f32, tol: f32) -> bool {
+    // pub fn transpose(&self) -> Array {}
+
+    pub fn all_close(&self, rhs: &Array, tol: f32) -> bool {
         (self - rhs)
             .data
             .iter()
@@ -68,6 +74,7 @@ macro_rules! impl_op {
                 Array {
                     data,
                     shape: self.shape.clone(),
+                    size: self.size,
                 }
             }
         }
@@ -90,6 +97,7 @@ macro_rules! impl_op {
                 Array {
                     data,
                     shape: self.shape.clone(),
+                    size: self.size,
                 }
             }
         }
@@ -112,6 +120,7 @@ macro_rules! impl_op {
                 Array {
                     data,
                     shape: self.shape.clone(),
+                    size: self.size,
                 }
             }
         }
@@ -134,6 +143,7 @@ macro_rules! impl_op {
                 Array {
                     data,
                     shape: self.shape.clone(),
+                    size: self.size,
                 }
             }
         }
@@ -145,6 +155,7 @@ macro_rules! impl_op {
                 Array {
                     data,
                     shape: self.shape.clone(),
+                    size: self.size,
                 }
             }
         }
@@ -156,6 +167,7 @@ macro_rules! impl_op {
                 Array {
                     data,
                     shape: rhs.shape.clone(),
+                    size: rhs.size,
                 }
             }
         }
@@ -167,6 +179,7 @@ macro_rules! impl_op {
                 Array {
                     data,
                     shape: self.shape.clone(),
+                    size: self.size,
                 }
             }
         }
@@ -178,6 +191,7 @@ macro_rules! impl_op {
                 Array {
                     data,
                     shape: rhs.shape.clone(),
+                    size: rhs.size,
                 }
             }
         }

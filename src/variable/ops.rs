@@ -1,5 +1,28 @@
-use super::*;
+use super::VBox;
+use crate::functions::{FType, Function};
 use std::ops::{Add, Div, Mul, Neg, Sub};
+
+impl VBox {
+    pub fn powi(&self, c: i32) -> VBox {
+        let func = Function::new(FType::Powi(c));
+        func.call(&[self.clone()])[0].clone()
+    }
+
+    pub fn powf(&self, c: f32) -> VBox {
+        let func = Function::new(FType::Powf(c));
+        func.call(&[self.clone()])[0].clone()
+    }
+
+    pub fn exp(&self) -> VBox {
+        let func = Function::new(FType::Exp);
+        func.call(&[self.clone()])[0].clone()
+    }
+
+    pub fn reshape(&self, shape: Vec<usize>) -> VBox {
+        let func = Function::new(FType::Reshape(self.get_shape(), shape));
+        func.call(&[self.clone()])[0].clone()
+    }
+}
 
 macro_rules! impl_op {
     ($trait: ident, $fname: ident) => {
@@ -7,7 +30,7 @@ macro_rules! impl_op {
             type Output = VBox;
             fn $fname(self, rhs: VBox) -> Self::Output {
                 let func = Function::new(FType::$trait);
-                func.call(&[self, rhs], true)[0].clone()
+                func.call(&[self, rhs])[0].clone()
             }
         }
 
@@ -99,25 +122,6 @@ impl Neg for VBox {
     type Output = VBox;
     fn neg(self) -> Self::Output {
         let func = Function::new(FType::Neg);
-        func.call(&[self], true)[0].clone()
-    }
-}
-
-impl VBox {
-    pub fn pow(&self, c: f32) -> VBox {
-        let func = Function::new(FType::Pow(c.into()));
-        func.call(&[self.clone()], true)[0].clone()
-    }
-}
-
-impl std::fmt::Display for VBox {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut string = format!("Variable({:?}", self.get_array().get_data());
-        match self.get_option_grad() {
-            None => {}
-            Some(g) => string += &format!(", grad: {:?}", g.get_data()),
-        }
-        string += ")";
-        write!(f, "{}", string)
+        func.call(&[self])[0].clone()
     }
 }

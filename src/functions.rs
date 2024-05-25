@@ -11,7 +11,9 @@ pub enum FType {
     Neg,
     Sub,
     Div,
-    Pow(f32),
+    Powi(i32),
+    Powf(f32),
+    Reshape(Vec<usize>, Vec<usize>),
 }
 
 pub struct Function {
@@ -43,14 +45,14 @@ impl Function {
         self.outputs.clone().unwrap()
     }
 
-    pub fn call(mut self, input: &[VBox], enable_backprop: bool) -> Vec<VBox> {
+    pub fn call(mut self, input: &[VBox]) -> Vec<VBox> {
         let x = input.iter().map(|i| i.get_array()).collect();
         let y = self.forward(x);
         let outputs: Vec<VBox> = y.into_iter().map(|y| VBox::new(y)).collect();
         self.inputs = Some(input.into());
         self.outputs = Some(outputs.iter().map(|o| o.clone().downgrade()).collect());
 
-        if enable_backprop {
+        if *crate::ENABLE_BACKPROP.lock().unwrap() {
             self.generation = input.iter().map(|x| x.get_gen()).max().unwrap();
             let to_self = Rc::new(self);
             for output in outputs.iter() {
@@ -68,7 +70,9 @@ impl Function {
             FType::Neg => vec![-&x[0]],
             FType::Sub => vec![&x[0] - &x[1]],
             FType::Div => vec![&x[0] / &x[1]],
-            FType::Pow(c) => vec![x[0].powf(*c)],
+            FType::Powi(c) => vec![x[0].powi(*c)],
+            FType::Powf(c) => vec![x[0].powf(*c)],
+            FType::Reshape(_, shape) => vec![x[0].reshape(shape.clone())],
         }
     }
 
@@ -87,7 +91,9 @@ impl Function {
             FType::Neg => vec![-&gy[0]],
             FType::Sub => vec![gy[0].clone(), -&gy[0]],
             FType::Div => vec![&gy[0] / &x[1], -&x[0] / &x[1].powf(2.) * &gy[0]],
-            FType::Pow(c) => vec![*c * x[0].powf(c - 1.) * &gy[0]],
+            FType::Powi(c) => vec![*c as f32 * x[0].powi(c - 1) * &gy[0]],
+            FType::Powf(c) => vec![*c * x[0].powf(c - 1.) * &gy[0]],
+            FType::Reshape(shape, _) => vec![gy[0].reshape(shape.clone())],
         }
     }
 }

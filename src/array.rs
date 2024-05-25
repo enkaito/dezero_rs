@@ -1,39 +1,34 @@
-mod array_ops;
-use std::{
-    fmt::Display,
-    iter,
-    ops::{Add, Div, Mul, Neg, Sub},
-};
+mod macros;
+mod ops;
+use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Array {
     data: Vec<f32>,
     shape: Vec<usize>,
-}
-
-impl Display for Array {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let string = self.to_string();
-        write!(f, "{}", string)
-    }
+    size: usize,
 }
 
 impl Array {
     pub fn new(data: Vec<f32>, shape: Vec<usize>) -> Array {
-        if data.len() != shape.iter().product() {
+        let size = data.len();
+        if size != shape.iter().product() {
             panic!("The data and the shape are inconsistent")
         }
-        Array { data, shape }
+        let size = data.len();
+        Array { data, shape, size }
     }
 
-    pub fn zeros(shape: &Vec<usize>) -> Array {
-        let data = iter::repeat(0.).take(shape.iter().product()).collect();
-        Array::new(data, shape.clone())
+    pub fn zeros(shape: Vec<usize>) -> Array {
+        let size = shape.iter().product();
+        let data = vec![0.; size];
+        Array { data, shape, size }
     }
 
-    pub fn ones(shape: &Vec<usize>) -> Array {
-        let data = iter::repeat(1.).take(shape.iter().product()).collect();
-        Array::new(data, shape.clone())
+    pub fn ones(shape: Vec<usize>) -> Array {
+        let size = shape.iter().product();
+        let data = vec![1.; size];
+        Array { data, shape, size }
     }
 
     pub fn get_data(&self) -> &Vec<f32> {
@@ -51,17 +46,31 @@ impl Array {
             *old = new
         }
     }
+
+    pub fn to_string(&self, depth: usize) -> String {
+        array_to_string(&self.data, &self.shape, depth)
+    }
 }
 
-#[macro_export]
-macro_rules! array0 {
-    ($data: expr) => {
-        $crate::array::Array::new(vec![$data as f32], Vec::new())
-    };
+impl Display for Array {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = array_to_string(&self.data, &self.shape, 0);
+        write!(f, "{}", string)
+    }
 }
 
-macro_rules! array1 {
-    ($data: expr) => {
-        $crate::array::Array::new(Vec::from($data), Vec::new($data.len()))
-    };
+fn array_to_string(data: &[f32], shape: &[usize], depth: usize) -> String {
+    match shape.len() {
+        0 => data[0].to_string(),
+        1 => format!("{:?}", data),
+        _ => {
+            let mut acc = "[".to_string();
+            acc += &data
+                .chunks(data.len() / shape[0])
+                .map(|row| array_to_string(row, &shape[1..], depth + 1))
+                .collect::<Vec<_>>()
+                .join(&format!("\n{}", " ".repeat(depth + 1)));
+            acc + "]"
+        }
+    }
 }
