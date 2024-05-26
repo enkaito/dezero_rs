@@ -36,10 +36,10 @@ impl VBox {
         func.call(&[self.clone()])[0].clone()
     }
 
-    pub fn sum_axis(&self, axis: usize, keep_dims: bool) -> VBox {
-        let func = Function::new(FType::SumAxis(axis, keep_dims, self.get_shape()[axis]));
-        func.call(&[self.clone()])[0].clone()
-    }
+    // pub fn sum_axis(&self, axis: usize, keep_dims: bool) -> VBox {
+    //     let func = Function::new(FType::SumAxis(axis, keep_dims, self.get_shape()[axis]));
+    //     func.call(&[self.clone()])[0].clone()
+    // }
 
     pub fn dot(&self, rhs: &VBox) -> VBox {
         let func = Function::new(FType::Matmul);

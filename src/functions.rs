@@ -16,7 +16,6 @@ pub enum FType {
     Reshape(Vec<usize>, Vec<usize>),
     Transpose,
     Sum(Vec<usize>),
-    SumAxis(usize, bool, usize),
     Matmul,
 }
 
@@ -79,7 +78,7 @@ impl Function {
             FType::Reshape(_, shape) => vec![x[0].reshape(shape)],
             FType::Transpose => vec![x[0].transpose()],
             FType::Sum(_) => vec![x[0].sum()],
-            FType::SumAxis(axis, keep_dims, _) => vec![x[0].sum_axis(*axis, *keep_dims)],
+            // FType::SumAxis(axis, keep_dims, _) => vec![x[0].sum_axis(*axis, *keep_dims)],
             FType::Matmul => vec![x[0].dot(&x[1])],
         }
     }
@@ -103,8 +102,10 @@ impl Function {
             FType::Powf(c) => vec![*c * x[0].powf(c - 1.) * &gy[0]],
             FType::Reshape(shape, _) => vec![gy[0].reshape(shape)],
             FType::Transpose => vec![gy[0].transpose()],
-            FType::Sum(shape) => vec![gy[0].broadcast_scaler(shape)],
-            FType::SumAxis(axis, keep_dims, dup) => vec![gy[0].broadcast(*axis, *keep_dims, *dup)],
+            FType::Sum(shape) => vec![gy[0].broadcast_to(shape)],
+            // FType::SumAxis(axis, keep_dims, dup) => {
+            //     vec![gy[0].broadcast_to(*axis, *keep_dims, *dup)]
+            // }
             FType::Matmul => vec![gy[0].dot(&x[1].transpose()), x[0].transpose().dot(&gy[0])],
         }
     }

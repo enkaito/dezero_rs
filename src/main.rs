@@ -1,34 +1,42 @@
+use std::sync::Arc;
+
 #[allow(unused_imports)]
 use dezero::{array0, array1, array2, array_with_shape, eval, scaler, var, Array, VBox};
 
 fn main() {
-    let x = var!(Array::rand(&[100, 1]));
-    let y = 5 + 2 * x + var!(Array::rand(&[100, 1]));
+    // let x = var!(Array::rand(&[100, 1]));
+    // let y = 5 + 2 * x + var!(Array::rand(&[100, 1]));
 
-    let w = var!(Array::zeros(&[1, 1]));
-    let b = var!(Array::zeros(&[]));
+    // let w = var!(Array::zeros(&[1, 1]));
+    // let b = var!(Array::zeros(&[]));
 
-    let pred = |x: &VBox| x.dot(&w) + b;
-    let mean_squared_error = |x: &VBox, y: &VBox| (x - y).powi(2).sum();
+    // let pred = |x: &VBox| x.dot(&w) + b;
+    // let mean_squared_error = |x: &VBox, y: &VBox| (x - y).powi(2).sum();
 
-    let lr = 0.1;
-    let iters = 100;
+    // let lr = 0.1;
+    // let iters = 100;
 
-    for _ in 0..iters {
-        let y_pred = pred(x);
-        let loss = mean_squared_error(&y, &y_pred);
+    // for _ in 0..iters {
+    //     let y_pred = pred(x);
+    //     let loss = mean_squared_error(&y, &y_pred);
 
-        w.clear_grad();
-        b.clear_grad();
-        loss.backward();
+    //     w.clear_grad();
+    //     b.clear_grad();
+    //     loss.backward();
 
-        w.set_array(w.get_array() - lr * w.get_grad());
-        b.set_array(b.get_array() - lr * b.get_grad());
+    //     w.set_array(w.get_array() - lr * w.get_grad());
+    //     b.set_array(b.get_array() - lr * b.get_grad());
 
-        println!("w:\t{}", w);
-        println!("b:\t{}", b);
-        println!("loss:\t{}\n", loss);
-    }
+    //     println!("w:\n{}", w);
+    //     println!("b:\n{}", b);
+    //     println!("loss:\n{}\n", loss);
+    // }
+
+    let x = array1!(0..8).reshape(&[2, 2, 2]);
+    let y = x.sum_to(&[]);
+    println!("{x}");
+    println!();
+    println!("{y}");
 }
 
 #[cfg(test)]

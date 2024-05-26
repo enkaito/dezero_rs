@@ -27,26 +27,6 @@ fn sum(data: &[f32], shape: &[usize], axis: usize) -> Vec<f32> {
     }
 }
 
-// todo: change the function to take lists of axis and dup to execute the broadcast in one call.
-fn broadcast(data: &[f32], shape: &[usize], axis: &[usize], dup: &[usize]) -> Vec<f32> {
-    if axis.is_empty() {
-        return data.to_vec();
-    }
-
-    if axis[0] == 0 {
-        data.iter()
-            .cycle()
-            .take(data.len() * dup)
-            .cloned()
-            .collect()
-    } else {
-        data.chunks(data.len() / shape[0])
-            .map(|x| broadcast(x, &shape[1..], axis - 1, dup))
-            .flatten()
-            .collect()
-    }
-}
-
 impl Array {
     pub fn exp(&self) -> Array {
         let data = self.data.iter().map(|a| a.exp()).collect();
@@ -81,73 +61,103 @@ impl Array {
         }
     }
 
-    pub fn sum_axis(&self, axis: usize, keep_dims: bool) -> Array {
-        if self.shape.len() < axis {
-            panic!("Axis {} doesn't exist in:\n{}", axis, self)
+    pub fn sum_to(&self, shape: &[usize]) -> Array {
+        if self.shape == shape {
+            return self.clone();
         }
-        let new_data = sum(&self.data, &self.shape, axis);
+        let Some(lead) = self.shape.len().checked_sub(shape.len()) else {
+            panic!("failed to sum {:?} to {:?}", shape, self.shape)
+        };
 
-        let mut new_shape = self.shape.clone();
-        if keep_dims {
-            new_shape[axis] = 1;
-        } else {
-            new_shape.remove(axis);
+        let tmp = vec![1; lead];
+        let new_shape = tmp
+            .into_iter()
+            .chain(shape.iter().cloned())
+            .collect::<Vec<_>>();
+
+        let mut axes = Vec::new();
+        for (axis, (i, j)) in self.shape.iter().zip(new_shape.iter()).enumerate() {
+            match (i, j) {
+                (i, j) if i == j => {}
+                (_, 1) => {
+                    axes.push(axis);
+                }
+                _ => panic!("failed to sum {:?} to {:?}", self.shape, shape),
+            }
         }
 
-        Array::new(new_data, new_shape)
+        let mut data = self.data.clone();
+        let dim = self.shape.len();
+
+        let mut steps = vec![1];
+        for x in self.shape.iter().rev() {
+            steps.push(steps.last().unwrap() * x);
+        }
+
+        for axis in axes {
+            let mut new_data = Vec::new();
+            let step = steps[dim - axis - 1];
+            for i in 0..(data.len() / steps[dim - axis]) {
+                for j in 0..step {
+                    new_data.push(
+                        data[steps[dim - axis] * i + j..]
+                            .iter()
+                            .step_by(step)
+                            .take(self.shape[axis])
+                            .sum(),
+                    )
+                }
+            }
+            data = new_data;
+        }
+
+        Array::new(data, shape.to_vec())
     }
 
     pub fn broadcast_to(&self, shape: &[usize]) -> Array {
         if self.shape == shape {
             return self.clone();
         }
-        let tmp = vec![1; shape.len() - self.shape.len()];
-        let old_shape = tmp.iter().chain(&self.shape);
+        let Some(lead) = shape.len().checked_sub(self.shape.len()) else {
+            panic!("failed to broadcast {:?} to {:?}", self.shape, shape)
+        };
+
+        let tmp = vec![1; lead];
+        let old_shape = tmp
+            .into_iter()
+            .chain(self.shape.clone())
+            .collect::<Vec<_>>();
+
+        let mut axes = Vec::new();
+        let mut dups = Vec::new();
+        for (axis, (i, j)) in old_shape.iter().zip(shape.iter()).enumerate() {
+            match (i, j) {
+                (i, j) if i == j => {}
+                (1, &dup) => {
+                    axes.push(axis);
+                    dups.push(dup);
+                }
+                _ => panic!("failed to broadcast {:?} to {:?}", self.shape, shape),
+            }
+        }
 
         let mut data = self.data.clone();
-        let mut shape = self.shape.to_vec();
-        for (axis, (i, j)) in old_shape.zip(shape.iter_mut()).enumerate() {
-            match (*i, *j) {
-                (i, j) if i == j => {}
-                (1, dup) => {
-                    data = broadcast(&data, &shape, axis, dup);
-                    *j = dup;
-                }
-                _ => panic!("broadcast from {:?} to {:?} failed", self.shape, shape),
-            }
+        let dim = shape.len();
+
+        let mut chunk_sizes = vec![1];
+        for x in shape {
+            chunk_sizes.push(chunk_sizes.last().unwrap() * x);
+        }
+
+        for (&axis, &dup) in axes.iter().rev().zip(dups.iter().rev()) {
+            data = data
+                .chunks(chunk_sizes[dim - axis - 1])
+                .map(|c| c.repeat(dup))
+                .flatten()
+                .collect();
         }
 
         Array::new(data, shape.to_vec())
-    }
-
-    pub fn broadcast(&self, axis: usize, keep_dims: bool, dup: usize) -> Array {
-        if self.shape.len() < axis {
-            panic!("Failed to expand axis {} in:\n{}", axis, self);
-        }
-
-        let new_data = broadcast(&self.data, &self.shape, axis, dup);
-
-        let mut new_shape = self.shape.clone();
-        if keep_dims {
-            if new_shape[axis] != 1 {
-                panic!("Broadcast failed trying to expand the dimension with size != 1")
-            }
-            new_shape[axis] = dup;
-        } else {
-            new_shape.insert(axis, dup);
-        }
-
-        Array::new(new_data, new_shape)
-    }
-
-    pub fn broadcast_scaler(&self, shape: &[usize]) -> Array {
-        let size = shape.iter().product();
-        let data = vec![self.data[0]; size];
-        Array {
-            data,
-            shape: shape.to_vec(),
-            size,
-        }
     }
 
     pub fn reshape(&self, new_shape: &[usize]) -> Array {
