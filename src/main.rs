@@ -4,7 +4,7 @@ use dezero::{array0, array1, array2, array_with_shape, eval, scaler, var, Array,
 use std::f32::consts::PI;
 
 fn main() {
-    let x = array1!(0..100) / 100.;
+    let x = (array1!(0..100) / 100.).reshape(&[100, 1]);
     let y = (2. * PI * &x).sin() + Array::rand(&[100, 1]) - 0.5;
     let x = var!(x.reshape(&[100, 1]));
     let y = var!(y);
@@ -41,8 +41,6 @@ fn main() {
 
         if i % 1000 == 0 {
             println!("{loss}");
-            // println!("{}", w1);
-            // println!("{}", b2);
         }
     }
 }
