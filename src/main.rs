@@ -11,31 +11,20 @@ fn main() {
     let x = var!(x.reshape(&[100, 1]));
     let y = var!(y);
 
-    let mut l1 = L::Linear::new(10, true);
-    let mut l2 = L::Linear::new(1, true);
-
-    let pred = |x: &VBox, l1: &mut dyn Layer, l2: &mut dyn Layer| {
-        let y = l1.call(x);
-        let y = F::sigmoid(&y);
-        let y = l2.call(&y);
-        y
-    };
+    let mut l = L::MLP::new(&[10, 1], Box::new(F::sigmoid));
 
     let lr = 0.005;
     let iters = 10000;
 
     for i in 0..iters {
-        let y_pred = &pred(x, &mut l1, &mut l2);
+        let y_pred = &l.call(x);
         let loss = &F::mean_squared_error(y, y_pred);
 
-        l1.clean_grads();
-        l2.clean_grads();
+        l.clear_grads();
         loss.backward();
 
-        for l in &[&l1, &l2] {
-            for p in l.get_params() {
-                p.set_array(p.get_array() - lr * p.get_grad());
-            }
+        for p in l.get_params() {
+            p.set_array(p.get_array() - lr * p.get_grad());
         }
 
         if i % 1000 == 0 {

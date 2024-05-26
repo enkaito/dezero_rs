@@ -1,6 +1,9 @@
-use crate::functions as F;
+use std::borrow::Borrow;
+
 use crate::variable::WeakVBox;
+use crate::{functions as F, scaler};
 use crate::{Array, VBox};
+use F::{FuncBox, Function};
 
 pub trait Layer {
     fn call(&mut self, x: &VBox) -> VBox {
@@ -9,9 +12,60 @@ pub trait Layer {
         y
     }
     fn forward(&mut self, x: &VBox) -> VBox;
-    fn clean_grads(&mut self);
+    fn clear_grads(&mut self);
     fn set_io(&mut self, input: &VBox, output: &VBox);
     fn get_params(&self) -> Vec<VBox>;
+}
+
+pub struct MLP {
+    input: Option<WeakVBox>,
+    output: Option<WeakVBox>,
+    out_sizes: Vec<usize>,
+    activation: Box<dyn Fn(&VBox) -> VBox>,
+    layers: Vec<Linear>,
+}
+
+impl MLP {
+    pub fn new(out_sizes: &[usize], activation: Box<dyn Fn(&VBox) -> VBox>) -> Self {
+        let mut layers = Vec::new();
+        for out_size in out_sizes {
+            layers.push(Linear::new(*out_size, true))
+        }
+        MLP {
+            input: None,
+            output: None,
+            out_sizes: out_sizes.to_vec(),
+            activation,
+            layers,
+        }
+    }
+}
+
+impl Layer for MLP {
+    fn forward(&mut self, x: &VBox) -> VBox {
+        let mut y = x.clone();
+        let len = self.layers.len();
+        for layer in &mut self.layers[..len - 1] {
+            y = (self.activation)(&layer.call(&y))
+        }
+        self.layers[len - 1].call(&y)
+    }
+    fn set_io(&mut self, input: &VBox, output: &VBox) {
+        self.input = Some(input.clone().downgrade());
+        self.output = Some(output.clone().downgrade())
+    }
+    fn get_params(&self) -> Vec<VBox> {
+        let mut params = Vec::new();
+        for layer in &self.layers {
+            params.append(&mut layer.get_params());
+        }
+        params
+    }
+    fn clear_grads(&mut self) {
+        for layer in &mut self.layers {
+            layer.clear_grads();
+        }
+    }
 }
 
 pub struct Linear {
@@ -48,6 +102,7 @@ impl Linear {
         self.w = Some(w);
     }
 }
+
 impl Layer for Linear {
     fn forward(&mut self, x: &VBox) -> VBox {
         if self.w.is_none() {
@@ -55,7 +110,7 @@ impl Layer for Linear {
         }
         F::linear(&x, self.w.as_ref().unwrap(), self.b.as_ref())
     }
-    fn clean_grads(&mut self) {
+    fn clear_grads(&mut self) {
         self.w.as_ref().unwrap().clear_grad();
         if let Some(b) = &self.b {
             b.clear_grad();
