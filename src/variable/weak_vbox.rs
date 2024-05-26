@@ -14,6 +14,11 @@ impl WeakVBox {
         VBox::from_rc(self.0.upgrade().unwrap())
     }
 
+    pub fn get_array(&self) -> Array {
+        let v = self.upgrade();
+        v.get_array()
+    }
+
     pub fn get_grad(&self) -> Array {
         let v = self.upgrade();
         v.get_grad()

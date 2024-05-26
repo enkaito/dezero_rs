@@ -21,6 +21,26 @@ pub fn call(mut f: impl Function + 'static, input: &[VBox]) -> Vec<VBox> {
     outputs
 }
 
+pub fn linear(x: &VBox, w: &VBox, b: Option<&VBox>) -> VBox {
+    let bias = b.is_some();
+    let func = Linear::new(bias);
+    if bias {
+        call(func, &[x.clone(), w.clone(), b.unwrap().clone()])[0].clone()
+    } else {
+        call(func, &[x.clone(), w.clone()])[0].clone()
+    }
+}
+
+pub fn sigmoid(x: &VBox) -> VBox {
+    let func = Sigmoid::new();
+    call(func, &[x.clone()])[0].clone()
+}
+
+pub fn mean_squared_error(x: &VBox, y: &VBox) -> VBox {
+    let func = MeanSquaredError::new();
+    call(func, &[x.clone(), y.clone()])[0].clone()
+}
+
 pub trait Function {
     fn get_generation(&self) -> u32;
     fn get_inputs(&self) -> Vec<VBox>;
@@ -287,119 +307,67 @@ impl Function for Dot {
     }
 }
 
-// impl Function {
-//     pub fn new(ftype: FType) -> Function {
-//         Function {
-//             inputs: None,
-//             outputs: None,
-//             ftype: ftype,
-//             generation: 0,
-//         }
-//     }
+define!(Linear, bias: bool);
+impl Function for Linear {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Vec<Array> {
+        let t = x[0].dot(&x[1]);
+        if self.bias {
+            vec![t + &x[2]]
+        } else {
+            vec![t]
+        }
+    }
+    fn backward(&self, gy: Vec<Array>) -> Vec<Array> {
+        let x: Vec<Array> = self
+            .inputs
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|x| x.get_array())
+            .collect();
+        let gx = gy[0].dot(&x[1].clone().transpose());
+        let gw = x[0].clone().transpose().dot(&gy[0]);
+        if self.bias {
+            vec![gx, gw, gy[0].clone().sum_to(&x[2].get_shape())]
+        } else {
+            vec![gx, gw]
+        }
+    }
+}
 
-//     pub fn get_gen(&self) -> u32 {
-//         self.generation
-//     }
+define!(Sigmoid,);
+impl Function for Sigmoid {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Vec<Array> {
+        vec![(&x[0] * 0.5).tanh() * 0.5 + 0.5]
+    }
+    fn backward(&self, gy: Vec<Array>) -> Vec<Array> {
+        let y = self.outputs.as_ref().unwrap().first().unwrap().get_array();
+        vec![&gy[0] * &y * (1. - y)]
+    }
+}
 
-//     pub fn clone_input(&self) -> Vec<VBox> {
-//         self.inputs.clone().unwrap()
-//     }
-
-//     pub fn clone_output(&self) -> Vec<WeakVBox> {
-//         self.outputs.clone().unwrap()
-//     }
-
-//     pub fn call(mut self, input: &[VBox]) -> Vec<VBox> {
-//         let x = input.iter().map(|i| i.get_array()).collect();
-//         let y = self.forward(x);
-//         let outputs: Vec<VBox> = y.into_iter().map(|y| VBox::new(y)).collect();
-//         self.inputs = Some(input.into());
-//         self.outputs = Some(outputs.iter().map(|o| o.clone().downgrade()).collect());
-
-//         if *crate::ENABLE_BACKPROP.lock().unwrap() {
-//             self.generation = input.iter().map(|x| x.get_gen()).max().unwrap();
-//             let to_self = Rc::new(self);
-//             for output in outputs.iter() {
-//                 output.set_creator(to_self.clone())
-//             }
-//         }
-//         outputs
-//     }
-
-//     fn forward(&self, x: Vec<Array>) -> Vec<Array> {
-//         match &self.ftype {
-//             FType::Exp => vec![x[0].exp()],
-//             FType::Add(_, _) => vec![&x[0] + &x[1]],
-//             FType::Mul(_, _) => vec![&x[0] * &x[1]],
-//             FType::Neg => vec![-&x[0]],
-//             FType::Sub(_, _) => vec![&x[0] - &x[1]],
-//             FType::Div(_, _) => vec![&x[0] / &x[1]],
-//             FType::Powi(c) => vec![x[0].powi(*c)],
-//             FType::Powf(c) => vec![x[0].powf(*c)],
-//             FType::Reshape(_, shape) => vec![x[0].clone().reshape(shape)],
-//             FType::Transpose => vec![x[0].clone().transpose()],
-//             FType::Sum(_) => vec![x[0].sum()],
-//             FType::SumTo(_, shape) => vec![x[0].clone().sum_to(shape)],
-//             FType::BroadcastTo(_, shape) => vec![x[0].clone().broadcast_to(shape)],
-//             FType::Matmul => vec![x[0].dot(&x[1])],
-//         }
-//     }
-
-//     pub fn backward(&self, gy: Vec<Array>) -> Vec<Array> {
-//         let x: Vec<Array> = self
-//             .inputs
-//             .as_ref()
-//             .unwrap()
-//             .iter()
-//             .map(|x| x.get_array())
-//             .collect();
-//         match &self.ftype {
-//             FType::Exp => vec![&x[0].exp() * &gy[0]],
-//             FType::Add(shape0, shape1) => {
-//                 vec![gy[0].clone().sum_to(shape0), gy[0].clone().sum_to(shape1)]
-//             }
-//             FType::Mul(shape0, shape1) => {
-//                 let gx0 = &x[1] * &gy[0];
-//                 let gx1 = &x[0] * &gy[0];
-//                 if shape0 != shape1 {
-//                     vec![gx0.sum_to(shape0), gx1.sum_to(shape1)]
-//                 } else {
-//                     vec![gx0, gx1]
-//                 }
-//             }
-//             FType::Neg => vec![-&gy[0]],
-//             FType::Sub(shape0, shape1) => {
-//                 let gx0 = gy[0].clone();
-//                 let gx1 = -&gy[0];
-//                 if shape0 != shape1 {
-//                     vec![gx0.sum_to(shape0), gx1.sum_to(shape1)]
-//                 } else {
-//                     vec![gx0, gx1]
-//                 }
-//             }
-//             FType::Div(shape0, shape1) => {
-//                 let gx0 = &gy[0] / &x[1];
-//                 let gx1 = -&x[0] / (&x[1] * &x[1]) * &gy[0];
-//                 if shape0 != shape1 {
-//                     vec![gx0.sum_to(shape0), gx1.sum_to(shape1)]
-//                 } else {
-//                     vec![gx0, gx1]
-//                 }
-//             }
-//             FType::Powi(c) => vec![*c as f32 * x[0].powi(c - 1) * &gy[0]],
-//             FType::Powf(c) => vec![*c * x[0].powf(c - 1.) * &gy[0]],
-//             FType::Reshape(shape, _) => vec![gy[0].clone().reshape(shape)],
-//             FType::Transpose => vec![gy[0].clone().transpose()],
-//             FType::Sum(shape) => vec![gy[0].clone().broadcast_to(shape)],
-//             FType::BroadcastTo(shape, _) => vec![gy[0].clone().sum_to(shape)],
-//             FType::SumTo(shape, _) => vec![gy[0].clone().broadcast_to(shape)],
-//             FType::Matmul => vec![
-//                 gy[0].dot(&x[1].clone().transpose()),
-//                 x[0].clone().transpose().dot(&gy[0]),
-//             ],
-//         }
-//     }
-// }
+define!(MeanSquaredError,);
+impl Function for MeanSquaredError {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Vec<Array> {
+        let diff = &x[0] - &x[1];
+        vec![diff.powi(2).sum() / diff.size() as f32]
+    }
+    fn backward(&self, gy: Vec<Array>) -> Vec<Array> {
+        let x: Vec<Array> = self
+            .inputs
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|x| x.get_array())
+            .collect();
+        let diff = &x[0] - &x[1];
+        let gx = &gy[0] * &diff * (2. / diff.size() as f32);
+        vec![gx.clone(), -gx]
+    }
+}
 
 #[derive(Clone)]
 pub struct FuncBox(Rc<dyn Function>);

@@ -8,4 +8,8 @@ impl Array {
             .try_for_each(|x| if x < &tol { Some(()) } else { None })
             .is_some()
     }
+
+    pub fn size(&self) -> usize {
+        self.size
+    }
 }
