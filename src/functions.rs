@@ -36,6 +36,11 @@ pub fn sigmoid(x: &VBox) -> VBox {
     call(func, &[x.clone()])[0].clone()
 }
 
+pub fn relu(x: &VBox) -> VBox {
+    let func = ReLU::new();
+    call(func, &[x.clone()])[0].clone()
+}
+
 pub fn mean_squared_error(x: &VBox, y: &VBox) -> VBox {
     let func = MeanSquaredError::new();
     call(func, &[x.clone(), y.clone()])[0].clone()
@@ -345,6 +350,18 @@ impl Function for Sigmoid {
     fn backward(&self, gy: Vec<Array>) -> Vec<Array> {
         let y = self.outputs.as_ref().unwrap().first().unwrap().get_array();
         vec![&gy[0] * &y * (1. - y)]
+    }
+}
+
+define!(ReLU,);
+impl Function for ReLU {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Vec<Array> {
+        vec![x[0].relu_max(0.)]
+    }
+    fn backward(&self, gy: Vec<Array>) -> Vec<Array> {
+        let x = self.inputs.as_ref().unwrap().first().unwrap().get_array();
+        vec![x.relu_mask(&gy[0], 0.)]
     }
 }
 

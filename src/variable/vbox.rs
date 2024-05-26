@@ -2,6 +2,7 @@ use crate::functions::FuncBox;
 use std::{
     cell::RefCell,
     collections::{BinaryHeap, HashSet},
+    hash::Hash,
     rc::Rc,
 };
 
@@ -10,6 +11,20 @@ use crate::Array;
 
 #[derive(Clone)]
 pub struct VBox(Rc<RefCell<Variable>>);
+
+impl PartialEq for VBox {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for VBox {}
+
+impl Hash for VBox {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_usize((Rc::as_ptr(&self.0) as *mut usize) as usize);
+    }
+}
 
 impl VBox {
     pub fn new(array: Array) -> VBox {

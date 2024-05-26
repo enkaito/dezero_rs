@@ -1,9 +1,29 @@
-use std::borrow::Borrow;
+use std::{cell::RefCell, rc::Rc};
 
+use crate::functions as F;
 use crate::variable::WeakVBox;
-use crate::{functions as F, scaler};
 use crate::{Array, VBox};
-use F::{FuncBox, Function};
+
+#[derive(Clone)]
+pub struct Model(Rc<RefCell<dyn Layer>>);
+
+impl Model {
+    pub fn new(target: impl Layer + 'static) -> Model {
+        Model(Rc::new(RefCell::new(target)))
+    }
+
+    pub fn clear_grads(&self) {
+        self.0.borrow_mut().clear_grads();
+    }
+
+    pub fn call(&self, x: &VBox) -> VBox {
+        self.0.borrow_mut().call(x)
+    }
+
+    pub fn get_params(&self) -> Vec<VBox> {
+        self.0.borrow().get_params()
+    }
+}
 
 pub trait Layer {
     fn call(&mut self, x: &VBox) -> VBox {
@@ -26,7 +46,7 @@ pub struct MLP {
 }
 
 impl MLP {
-    pub fn new(out_sizes: &[usize], activation: Box<dyn Fn(&VBox) -> VBox>) -> Self {
+    pub fn new(out_sizes: &[usize], activation: Box<dyn Fn(&VBox) -> VBox>) -> MLP {
         let mut layers = Vec::new();
         for out_size in out_sizes {
             layers.push(Linear::new(*out_size, true))
@@ -38,6 +58,10 @@ impl MLP {
             activation,
             layers,
         }
+    }
+
+    pub fn get_out_sizes(&self) -> Vec<usize> {
+        self.out_sizes.to_vec()
     }
 }
 

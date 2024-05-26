@@ -294,6 +294,21 @@ impl Array {
             ),
         }
     }
+
+    pub fn relu_max(&self, rhs: f32) -> Array {
+        let data = self.data.iter().map(|a| a.max(rhs)).collect();
+        Array::new(data, self.shape.clone())
+    }
+
+    pub fn relu_mask(&self, masked: &Array, threshold: f32) -> Array {
+        let data = self
+            .data
+            .iter()
+            .zip(masked.data.iter())
+            .map(|(&x, &y)| if x > threshold { y } else { 0. })
+            .collect();
+        Array::new(data, self.shape.clone())
+    }
 }
 
 macro_rules! impl_op {
