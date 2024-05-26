@@ -113,8 +113,8 @@ impl VBox {
 
         while let Some(f) = funcs.pop() {
             let x = f.get_inputs();
-            let y = f.get_outputs().iter().map(|y| y.get_grad()).collect();
-            let gxs = f.backward(y);
+            let gy = f.get_output().get_grad();
+            let gxs = f.backward(gy);
 
             for (x, gx) in x.iter().zip(gxs.into_iter()) {
                 if let Some(gx_old) = x.get_option_grad() {
@@ -132,9 +132,7 @@ impl VBox {
             }
 
             if !retain_grad {
-                for y in f.get_outputs().iter() {
-                    y.clear_grad()
-                }
+                f.get_output().clear_grad();
             }
         }
     }
