@@ -3,6 +3,7 @@ mod ops;
 mod utils;
 
 use rand::{distributions::Standard, Rng};
+use rand_distr::{Distribution, Normal};
 use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -46,6 +47,19 @@ impl Array {
         let size = shape.iter().product();
         let rng = rand::thread_rng();
         let data = rng.sample_iter(Standard).take(size).collect();
+        Array {
+            data,
+            shape: shape.to_vec(),
+            size,
+        }
+    }
+
+    pub fn randn(shape: &[usize], mean: f32, std_dev: f32) -> Array {
+        let size = shape.iter().product();
+        let rng = rand::thread_rng();
+        let normal = Normal::new(mean, std_dev).unwrap();
+        let data = normal.sample_iter(rng).take(size).collect();
+
         Array {
             data,
             shape: shape.to_vec(),

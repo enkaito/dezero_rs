@@ -1,6 +1,7 @@
 pub mod array;
 pub mod functions;
-pub mod macros;
+pub mod layers;
+mod macros;
 pub mod variable;
 
 use std::sync::Mutex;
