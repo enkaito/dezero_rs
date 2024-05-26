@@ -1,49 +1,54 @@
 use super::VBox;
 use crate::{
-    functions::{FType, Function},
+    functions::{self as F},
     scaler,
 };
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 impl VBox {
     pub fn powi(&self, c: i32) -> VBox {
-        let func = Function::new(FType::Powi(c));
-        func.call(&[self.clone()])[0].clone()
+        let func = F::Pow::new(c as f32);
+        F::call(func, &[self.clone()])[0].clone()
     }
 
-    pub fn powf(&self, c: f32) -> VBox {
-        let func = Function::new(FType::Powf(c));
-        func.call(&[self.clone()])[0].clone()
+    pub fn pow(&self, c: f32) -> VBox {
+        let func = F::Pow::new(c);
+        F::call(func, &[self.clone()])[0].clone()
     }
 
     pub fn exp(&self) -> VBox {
-        let func = Function::new(FType::Exp);
-        func.call(&[self.clone()])[0].clone()
+        let func = F::Exp::new();
+        F::call(func, &[self.clone()])[0].clone()
     }
 
     pub fn reshape(&self, shape: Vec<usize>) -> VBox {
-        let func = Function::new(FType::Reshape(self.get_shape(), shape));
-        func.call(&[self.clone()])[0].clone()
+        let func = F::Reshape::new(self.get_shape(), shape);
+        F::call(func, &[self.clone()])[0].clone()
     }
 
     pub fn transpose(&self) -> VBox {
-        let func = Function::new(FType::Transpose);
-        func.call(&[self.clone()])[0].clone()
+        let func = F::Transpose::new();
+        F::call(func, &[self.clone()])[0].clone()
     }
 
     pub fn sum(&self) -> VBox {
-        let func = Function::new(FType::Sum(self.get_shape()));
-        func.call(&[self.clone()])[0].clone()
+        let func = F::Sum::new(self.get_shape());
+        F::call(func, &[self.clone()])[0].clone()
     }
 
-    // pub fn sum_axis(&self, axis: usize, keep_dims: bool) -> VBox {
-    //     let func = Function::new(FType::SumAxis(axis, keep_dims, self.get_shape()[axis]));
-    //     func.call(&[self.clone()])[0].clone()
-    // }
+    pub fn sum_to(&self, shape: &[usize]) -> VBox {
+        let func = F::SumTo::new(self.get_shape(), shape.to_vec());
+        F::call(func, &[self.clone()])[0].clone()
+    }
+
+    pub fn broadcast_to(&self, shape: &[usize]) -> VBox {
+        let func = F::BroadcastTo::new(self.get_shape(), shape.to_vec());
+        F::call(func, &[self.clone()])[0].clone()
+    }
 
     pub fn dot(&self, rhs: &VBox) -> VBox {
-        let func = Function::new(FType::Matmul);
-        func.call(&[self.clone(), rhs.clone()])[0].clone()
+        let func = F::Dot::new();
+        F::call(func, &[self.clone(), rhs.clone()])[0].clone()
     }
 }
 
@@ -52,8 +57,8 @@ macro_rules! impl_op {
         impl $trait for VBox {
             type Output = VBox;
             fn $fname(self, rhs: VBox) -> Self::Output {
-                let func = Function::new(FType::$trait);
-                func.call(&[self, rhs])[0].clone()
+                let func = F::$trait::new(self.get_shape(), rhs.get_shape());
+                F::call(func, &[self, rhs])[0].clone()
             }
         }
 
@@ -144,8 +149,8 @@ impl_op!(Div, div);
 impl Neg for VBox {
     type Output = VBox;
     fn neg(self) -> Self::Output {
-        let func = Function::new(FType::Neg);
-        func.call(&[self])[0].clone()
+        let func = F::Neg::new();
+        F::call(func, &[self])[0].clone()
     }
 }
 

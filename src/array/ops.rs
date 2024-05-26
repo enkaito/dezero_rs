@@ -8,25 +8,6 @@ macro_rules! inner {
     };
 }
 
-fn sum(data: &[f32], shape: &[usize], axis: usize) -> Vec<f32> {
-    match axis {
-        0 => {
-            let len = data.len() / shape[0];
-            let mut res = Vec::with_capacity(len);
-            for i in 0..len {
-                let sum = (0..shape[0]).fold(0., |acc, j| acc + data[i + len * j]);
-                res.push(sum);
-            }
-            res
-        }
-        _ => data
-            .chunks(data.len() / shape[0])
-            .map(|x| sum(x, &shape[1..], axis - 1))
-            .flatten()
-            .collect(),
-    }
-}
-
 impl Array {
     pub fn exp(&self) -> Array {
         let data = self.data.iter().map(|a| a.exp()).collect();
@@ -61,10 +42,11 @@ impl Array {
         }
     }
 
-    pub fn sum_to(&self, shape: &[usize]) -> Array {
+    pub fn sum_to(self, shape: &[usize]) -> Array {
         if self.shape == shape {
-            return self.clone();
+            return self;
         }
+
         let Some(lead) = self.shape.len().checked_sub(shape.len()) else {
             panic!("failed to sum {:?} to {:?}", shape, self.shape)
         };
@@ -86,7 +68,7 @@ impl Array {
             }
         }
 
-        let mut data = self.data.clone();
+        let mut data = self.data;
         let dim = self.shape.len();
 
         let mut steps = vec![1];
@@ -114,9 +96,9 @@ impl Array {
         Array::new(data, shape.to_vec())
     }
 
-    pub fn broadcast_to(&self, shape: &[usize]) -> Array {
+    pub fn broadcast_to(self, shape: &[usize]) -> Array {
         if self.shape == shape {
-            return self.clone();
+            return self;
         }
         let Some(lead) = shape.len().checked_sub(self.shape.len()) else {
             panic!("failed to broadcast {:?} to {:?}", self.shape, shape)
@@ -141,7 +123,7 @@ impl Array {
             }
         }
 
-        let mut data = self.data.clone();
+        let mut data = self.data;
         let dim = shape.len();
 
         let mut chunk_sizes = vec![1];
@@ -160,27 +142,27 @@ impl Array {
         Array::new(data, shape.to_vec())
     }
 
-    pub fn reshape(&self, new_shape: &[usize]) -> Array {
+    pub fn reshape(self, new_shape: &[usize]) -> Array {
         let new_size = new_shape.iter().product();
         if self.size != new_size {
             panic!("Cannot convert {:?} to {:?}", self.shape, new_shape)
         }
         Array {
-            data: self.data.clone(),
+            data: self.data,
             shape: new_shape.to_vec(),
             size: self.size,
         }
     }
 
-    pub fn transpose(&self) -> Array {
+    pub fn transpose(self) -> Array {
         match self.shape.len() {
-            0 | 1 => self.clone(),
+            0 | 1 => self,
             2 => self.transpose2d(),
             _ => todo!("transpose for array with dim > 3 is not implemented"),
         }
     }
 
-    fn transpose2d(&self) -> Array {
+    fn transpose2d(self) -> Array {
         let (m, n) = (self.shape[0], self.shape[1]);
         let mut data = Vec::with_capacity(self.size);
         for i in 0..n {
@@ -228,7 +210,7 @@ impl Array {
                     for j in 0..n {
                         data.push(inner!(
                             lhs[m * i..].iter().take(m),
-                            rhs[j..].iter().step_by(m)
+                            rhs[j..].iter().step_by(n)
                         ));
                     }
                 }

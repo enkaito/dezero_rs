@@ -1,4 +1,4 @@
-use crate::functions::{FuncBox, Function};
+use crate::functions::FuncBox;
 use std::{
     cell::RefCell,
     collections::{BinaryHeap, HashSet},
@@ -71,11 +71,11 @@ impl VBox {
         v.borrow_mut().grad = None;
     }
 
-    pub fn set_creator(&self, func: Rc<Function>) {
+    pub fn set_creator(&self, func: FuncBox) {
         let tmp = self.0.as_ref();
         let mut v = tmp.borrow_mut();
         v.generation = func.get_gen() + 1;
-        v.creator = Some(FuncBox(func));
+        v.creator = Some(func);
     }
 
     pub fn backward(&self) {
@@ -97,9 +97,9 @@ impl VBox {
         seen_set.insert(creator);
 
         while let Some(f) = funcs.pop() {
-            let x = f.0.clone_input();
-            let y = f.0.clone_output().iter().map(|y| y.get_grad()).collect();
-            let gxs = f.0.backward(y);
+            let x = f.get_inputs();
+            let y = f.get_outputs().iter().map(|y| y.get_grad()).collect();
+            let gxs = f.backward(y);
 
             for (x, gx) in x.iter().zip(gxs.into_iter()) {
                 if let Some(gx_old) = x.get_option_grad() {
@@ -117,7 +117,7 @@ impl VBox {
             }
 
             if !retain_grad {
-                for y in f.0.clone_output().iter() {
+                for y in f.get_outputs().iter() {
                     y.clear_grad()
                 }
             }
