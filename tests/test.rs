@@ -99,7 +99,7 @@ fn overload_test() {
 }
 
 #[test]
-fn test_sphere() {
+fn sphere_test() {
     let x = scaler!(1.);
     let y = scaler!(1.);
     let z = x.powi(2) + y.powi(2);
@@ -111,7 +111,7 @@ fn test_sphere() {
 }
 
 #[test]
-fn test_matyas() {
+fn matyas_test() {
     let matyas = |x: &VBox, y: &VBox| 0.26 * (x.powi(2) + y.powi(2)) - 0.48 * x * y;
 
     let x = &scaler!(1.);
@@ -124,7 +124,7 @@ fn test_matyas() {
 }
 
 #[test]
-fn test_goldstein_prince() {
+fn goldstein_prince_test() {
     let gp = |x: &VBox, y: &VBox| {
         (1 + (x + y + 1).powi(2)
             * (19 - 14 * x + 3 * x.powi(2) - 14 * y + 6 * x * y + 3 * y.powi(2)))
@@ -231,8 +231,4 @@ fn sigmoid_test() {
 
     println!("{}", x);
     println!("{}", y);
-
-    let x = Array::rand(&[100, 1]);
-    println!("{}", x);
-    panic!();
 }

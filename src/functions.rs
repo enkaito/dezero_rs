@@ -44,6 +44,16 @@ pub fn mean_squared_error(x: &VBox, y: &VBox) -> VBox {
     call(func, &[x.clone(), y.clone()])
 }
 
+pub fn softmax(x: &VBox, axis: usize) -> VBox {
+    let func = Softmax::new(axis);
+    call(func, &[x.clone()])
+}
+
+pub fn cross_entropy_loss(x: &VBox, t: &VBox) -> VBox {
+    let func = CrossEnrtopy::new();
+    call(func, &[x.clone(), t.clone()])
+}
+
 pub trait Function {
     fn get_generation(&self) -> u32;
     fn get_inputs(&self) -> Vec<VBox>;
@@ -210,8 +220,20 @@ impl Function for Neg {
     }
 }
 
-define!(Pow, c: f32);
-impl Function for Pow {
+define!(Powi, n: i32);
+impl Function for Powi {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        x[0].powi(self.n)
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x = self.inputs.as_ref().unwrap().first().unwrap().get_array();
+        vec![self.n as f32 * x.powi(self.n - 1) * gy]
+    }
+}
+
+define!(Powf, c: f32);
+impl Function for Powf {
     impl_getters_setters!();
     fn forward(&self, x: Vec<Array>) -> Array {
         x[0].powf(self.c)
@@ -289,11 +311,11 @@ impl Function for BroadcastTo {
     }
 }
 
-define!(Dot,);
-impl Function for Dot {
+define!(Matmul,);
+impl Function for Matmul {
     impl_getters_setters!();
     fn forward(&self, x: Vec<Array>) -> Array {
-        x[0].dot(&x[1])
+        x[0].matmul(&x[1])
     }
     fn backward(&self, gy: Array) -> Vec<Array> {
         let x: Vec<Array> = self
@@ -304,8 +326,8 @@ impl Function for Dot {
             .map(|x| x.get_array())
             .collect();
         vec![
-            gy.dot(&x[1].clone().transpose()),
-            x[0].clone().transpose().dot(&gy),
+            gy.matmul(&x[1].clone().transpose()),
+            x[0].clone().transpose().matmul(&gy),
         ]
     }
 }
@@ -314,7 +336,7 @@ define!(Linear, bias: bool);
 impl Function for Linear {
     impl_getters_setters!();
     fn forward(&self, x: Vec<Array>) -> Array {
-        let t = x[0].dot(&x[1]);
+        let t = x[0].matmul(&x[1]);
         if self.bias {
             t + &x[2]
         } else {
@@ -329,8 +351,8 @@ impl Function for Linear {
             .iter()
             .map(|x| x.get_array())
             .collect();
-        let gx = gy.dot(&x[1].clone().transpose());
-        let gw = x[0].clone().transpose().dot(&gy);
+        let gx = gy.matmul(&x[1].clone().transpose());
+        let gw = x[0].clone().transpose().matmul(&gy);
         if self.bias {
             vec![gx, gw, gy.sum_to(&x[2].get_shape())]
         } else {
@@ -381,6 +403,41 @@ impl Function for MeanSquaredError {
         let diff = &x[0] - &x[1];
         let gx = gy * &diff * (2. / diff.size() as f32);
         vec![gx.clone(), -gx]
+    }
+}
+
+define!(Softmax, axis: usize);
+impl Function for Softmax {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        let y = (&x[0] - x[0].max(self.axis)).exp();
+        &y / y.sum_with_axis(self.axis)
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let y = self.output.as_ref().unwrap().get_array();
+        let gx = &y * gy;
+        let sumdx = &gx.sum_with_axis(self.axis);
+        vec![gx - y * sumdx]
+    }
+}
+
+define!(CrossEnrtopy,);
+impl Function for CrossEnrtopy {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        -x[0].ln().matmul(&x[1].transpose()).sum()
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x: Vec<Array> = self
+            .inputs
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|x| x.get_array())
+            .collect();
+        let gx = -&x[1] / &x[0];
+        let gt = -x[0].ln();
+        vec![gx * &gy, gt * &gy]
     }
 }
 

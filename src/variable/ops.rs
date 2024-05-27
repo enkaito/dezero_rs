@@ -6,13 +6,13 @@ use crate::{
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 impl VBox {
-    pub fn powi(&self, c: i32) -> VBox {
-        let func = F::Pow::new(c as f32);
+    pub fn powi(&self, n: i32) -> VBox {
+        let func = F::Powi::new(n);
         F::call(func, &[self.clone()])
     }
 
     pub fn pow(&self, c: f32) -> VBox {
-        let func = F::Pow::new(c);
+        let func = F::Powf::new(c);
         F::call(func, &[self.clone()])
     }
 
@@ -46,8 +46,8 @@ impl VBox {
         F::call(func, &[self.clone()])
     }
 
-    pub fn dot(&self, rhs: &VBox) -> VBox {
-        let func = F::Dot::new();
+    pub fn matmul(&self, rhs: &VBox) -> VBox {
+        let func = F::Matmul::new();
         F::call(func, &[self.clone(), rhs.clone()])
     }
 }

@@ -1,33 +1,12 @@
-use std::f32::consts::PI;
-
-use dezero::functions as F;
-use dezero::layers::{Model, MLP};
-use dezero::optimizers::{Momentum, Optimizer, SGD};
-use dezero::{array1, var, Array};
+use dezero::{array0, array1, functions as F, var, Array};
 
 fn main() {
-    let x = (array1!(0..100) / 100.).reshape(&[100, 1]);
-    let y = (2. * PI * &x).sin() + Array::rand(&[100, 1]) - 0.5;
-    let x = var!(x.reshape(&[100, 1]));
-    let y = var!(y);
+    let x = var!(array1!([0.2, -0.4, 0.3, 0.5, 1.3, -3.2, 2.1, 0.3]).reshape(&[4, 2]));
+    let t = var!(array1!([0, 1, 1, 0, 0, 1, 1, 0]).reshape(&[4, 2]));
+    let y = &F::softmax(x, 1);
+    let loss = F::cross_entropy_loss(y, t);
+    loss.backward();
 
-    let model = Model::new(MLP::new(&[10, 1], Box::new(F::relu)));
-
-    let mut optimizer = Momentum::new(0.002, 0.9, model.clone());
-
-    let iters = 10000;
-
-    for i in 0..iters {
-        let y_pred = &model.call(x);
-        let loss = &F::mean_squared_error(y, y_pred);
-
-        model.clear_grads();
-        loss.backward();
-
-        optimizer.update();
-
-        if i % 1000 == 0 {
-            println!("{loss}");
-        }
-    }
+    println!("{}", x);
+    println!("{}", t);
 }
