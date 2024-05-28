@@ -1,4 +1,6 @@
-use crate::functions::FuncBox;
+use ndarray::ArrayD;
+
+use crate::functions::FnBox;
 use std::{
     cell::RefCell,
     collections::{BinaryHeap, HashSet},
@@ -7,7 +9,6 @@ use std::{
 };
 
 use super::{Variable, WeakVBox};
-use crate::array::Array;
 
 #[derive(Clone)]
 pub struct VBox(Rc<RefCell<Variable>>);
@@ -27,7 +28,7 @@ impl Hash for VBox {
 }
 
 impl VBox {
-    pub fn new(array: Array) -> VBox {
+    pub fn new(array: ArrayD<f32>) -> VBox {
         VBox(Rc::new(RefCell::new(Variable {
             array,
             grad: None,
@@ -40,27 +41,27 @@ impl VBox {
         VBox(rc)
     }
 
-    pub fn get_array(&self) -> Array {
+    pub fn get_array(&self) -> ArrayD<f32> {
         let v = self.0.as_ref();
         v.borrow().array.clone()
     }
 
     pub fn get_shape(&self) -> Vec<usize> {
         let v = self.0.as_ref();
-        v.borrow().array.get_shape().clone()
+        v.borrow().array.shape().to_vec()
     }
 
-    pub fn get_grad(&self) -> Array {
+    pub fn get_grad(&self) -> ArrayD<f32> {
         let v = self.0.as_ref();
         v.borrow().grad.clone().unwrap()
     }
 
-    pub fn get_option_grad(&self) -> Option<Array> {
+    pub fn get_option_grad(&self) -> Option<ArrayD<f32>> {
         let v = self.0.as_ref();
         v.borrow().grad.clone()
     }
 
-    pub fn get_creator(&self) -> Option<FuncBox> {
+    pub fn get_creator(&self) -> Option<FnBox> {
         self.0.clone().borrow().creator.clone()
     }
 
@@ -68,15 +69,15 @@ impl VBox {
         self.0.clone().borrow().generation
     }
 
-    pub fn set_array(&self, data: Array) {
+    pub fn set_array(&self, data: ArrayD<f32>) {
         let v = self.0.as_ref();
-        v.borrow_mut().array.set_data(data);
+        v.borrow_mut().array = data;
     }
 
-    pub fn set_grad(&self, grad: Array) {
+    pub fn set_grad(&self, grad: ArrayD<f32>) {
         let v = self.0.as_ref();
         match &mut v.borrow_mut().grad {
-            Some(grad_old) => grad_old.set_data(grad),
+            Some(grad_old) => *grad_old = grad,
             x @ None => *x = Some(grad),
         };
     }
@@ -86,7 +87,7 @@ impl VBox {
         v.borrow_mut().grad = None;
     }
 
-    pub fn set_creator(&self, func: FuncBox) {
+    pub fn set_creator(&self, func: FnBox) {
         let tmp = self.0.as_ref();
         let mut v = tmp.borrow_mut();
         v.generation = func.get_gen() + 1;
@@ -99,7 +100,7 @@ impl VBox {
 
     pub fn backward_with_option(&self, retain_grad: bool) {
         if self.get_option_grad().is_none() {
-            self.set_grad(Array::ones(&self.get_shape()));
+            self.set_grad(ArrayD::ones(self.0.borrow().array.raw_dim()));
         }
 
         let mut funcs = BinaryHeap::new();
@@ -118,7 +119,7 @@ impl VBox {
 
             for (x, gx) in x.iter().zip(gxs.into_iter()) {
                 if let Some(gx_old) = x.get_option_grad() {
-                    x.set_grad(gx_old + &gx)
+                    x.set_grad(gx_old + gx)
                 } else {
                     x.set_grad(gx);
                 }
@@ -144,10 +145,10 @@ impl VBox {
 
 impl std::fmt::Display for VBox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut string = format!("Variable({}", self.get_array().to_string(9));
+        let mut string = format!("Variable({}", self.get_array().to_string());
         match self.get_option_grad() {
             None => {}
-            Some(g) => string += &format!(",\n   grad: {}", g.to_string(9)),
+            Some(g) => string += &format!(",\n   grad: {}", g.to_string()),
         }
         string += ")";
         write!(f, "{}", string)

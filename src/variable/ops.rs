@@ -5,52 +5,52 @@ use crate::{
 };
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-impl VBox {
-    pub fn powi(&self, n: i32) -> VBox {
-        let func = F::Powi::new(n);
-        F::call(func, &[self.clone()])
-    }
+// impl VBox {
+//     pub fn powi(&self, n: i32) -> VBox {
+//         let func = F::Powi::new(n);
+//         F::call(func, &[self.clone()])
+//     }
 
-    pub fn pow(&self, c: f32) -> VBox {
-        let func = F::Powf::new(c);
-        F::call(func, &[self.clone()])
-    }
+//     pub fn pow(&self, c: f32) -> VBox {
+//         let func = F::Powf::new(c);
+//         F::call(func, &[self.clone()])
+//     }
 
-    pub fn exp(&self) -> VBox {
-        let func = F::Exp::new();
-        F::call(func, &[self.clone()])
-    }
+//     pub fn exp(&self) -> VBox {
+//         let func = F::Exp::new();
+//         F::call(func, &[self.clone()])
+//     }
 
-    pub fn reshape(&self, shape: Vec<usize>) -> VBox {
-        let func = F::Reshape::new(self.get_shape(), shape);
-        F::call(func, &[self.clone()])
-    }
+//     pub fn reshape(&self, shape: Vec<usize>) -> VBox {
+//         let func = F::Reshape::new(self.get_shape(), shape);
+//         F::call(func, &[self.clone()])
+//     }
 
-    pub fn transpose(&self) -> VBox {
-        let func = F::Transpose::new();
-        F::call(func, &[self.clone()])
-    }
+//     pub fn transpose(&self) -> VBox {
+//         let func = F::Transpose::new();
+//         F::call(func, &[self.clone()])
+//     }
 
-    pub fn sum(&self) -> VBox {
-        let func = F::Sum::new(self.get_shape());
-        F::call(func, &[self.clone()])
-    }
+//     pub fn sum(&self) -> VBox {
+//         let func = F::Sum::new(self.get_shape());
+//         F::call(func, &[self.clone()])
+//     }
 
-    pub fn sum_to(&self, shape: &[usize]) -> VBox {
-        let func = F::SumTo::new(self.get_shape(), shape.to_vec());
-        F::call(func, &[self.clone()])
-    }
+//     pub fn sum_to(&self, shape: &[usize]) -> VBox {
+//         let func = F::SumTo::new(self.get_shape(), shape.to_vec());
+//         F::call(func, &[self.clone()])
+//     }
 
-    pub fn broadcast_to(&self, shape: &[usize]) -> VBox {
-        let func = F::BroadcastTo::new(self.get_shape(), shape.to_vec());
-        F::call(func, &[self.clone()])
-    }
+//     pub fn broadcast_to(&self, shape: &[usize]) -> VBox {
+//         let func = F::BroadcastTo::new(self.get_shape(), shape.to_vec());
+//         F::call(func, &[self.clone()])
+//     }
 
-    pub fn matmul(&self, rhs: &VBox) -> VBox {
-        let func = F::Matmul::new();
-        F::call(func, &[self.clone(), rhs.clone()])
-    }
-}
+//     pub fn matmul(&self, rhs: &VBox) -> VBox {
+//         let func = F::Matmul::new();
+//         F::call(func, &[self.clone(), rhs.clone()])
+//     }
+// }
 
 macro_rules! impl_op {
     ($trait: ident, $fname: ident) => {
@@ -58,7 +58,7 @@ macro_rules! impl_op {
             type Output = VBox;
             fn $fname(self, rhs: VBox) -> Self::Output {
                 let func = F::$trait::new(self.get_shape(), rhs.get_shape());
-                F::call(func, &[self, rhs]).clone()
+                F::call(func, [self, rhs]).clone()
             }
         }
 
@@ -142,21 +142,21 @@ macro_rules! impl_op {
 }
 
 impl_op!(Add, add);
-impl_op!(Mul, mul);
-impl_op!(Sub, sub);
-impl_op!(Div, div);
+// impl_op!(Mul, mul);
+// impl_op!(Sub, sub);
+// impl_op!(Div, div);
 
-impl Neg for VBox {
-    type Output = VBox;
-    fn neg(self) -> Self::Output {
-        let func = F::Neg::new();
-        F::call(func, &[self])
-    }
-}
+// impl Neg for VBox {
+//     type Output = VBox;
+//     fn neg(self) -> Self::Output {
+//         let func = F::Neg::new();
+//         F::call(func, &[self])
+//     }
+// }
 
-impl Neg for &VBox {
-    type Output = VBox;
-    fn neg(self) -> Self::Output {
-        -self.clone()
-    }
-}
+// impl Neg for &VBox {
+//     type Output = VBox;
+//     fn neg(self) -> Self::Output {
+//         -self.clone()
+//     }
+// }
