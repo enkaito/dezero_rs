@@ -23,6 +23,38 @@ impl Array {
         Array { data, shape, size }
     }
 
+    pub fn read_csv(path: &str) -> Array {
+        let f = std::fs::read_to_string(path).expect("File not found");
+        let lines = f.lines().collect::<Vec<_>>();
+        let num_rows = lines.len();
+        let num_cols = lines[0].split(',').count();
+        let data = lines
+            .iter()
+            .flat_map(|s| s.split(',').map(|d| d.parse::<f32>().unwrap()))
+            .collect::<Vec<f32>>();
+
+        Array::new(data, vec![num_rows, num_cols])
+    }
+
+    pub fn write_csv(&self, path: &str) {
+        if self.shape.len() != 2 {
+            panic!("This implementation is temporary and can only handle 2dim arrays.")
+        }
+        let string = self
+            .data
+            .chunks(self.shape[1])
+            .map(|row| {
+                row.iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        std::fs::write(path, string).unwrap();
+    }
+
     pub fn zeros(shape: &[usize]) -> Array {
         let size = shape.iter().product();
         let data = vec![0.; size];

@@ -1,5 +1,5 @@
 use super::{VBox, Variable};
-use crate::Array;
+use crate::array::Array;
 use std::{cell::RefCell, rc::Weak};
 
 #[derive(Clone)]

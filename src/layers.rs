@@ -1,8 +1,10 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::functions as F;
-use crate::variable::WeakVBox;
-use crate::{Array, VBox};
+use crate::{
+    array::Array,
+    variable::{VBox, WeakVBox},
+};
 
 #[derive(Clone)]
 pub struct Model(Rc<RefCell<dyn Layer>>);

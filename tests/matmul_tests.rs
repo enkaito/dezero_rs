@@ -1,6 +1,6 @@
 extern crate dezero;
 
-use dezero::{array0, array1, Array};
+use dezero::{array::Array, array0, array1};
 
 #[test]
 fn matmul1() {

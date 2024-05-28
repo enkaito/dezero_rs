@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{layers::Model, Array, VBox};
+use crate::{array::Array, layers::Model, variable::VBox};
 
 pub trait Optimizer {
     fn update(&mut self) {

@@ -1,7 +1,7 @@
 extern crate dezero;
 
 use dezero::functions::{self as F, mean_squared_error};
-use dezero::{array0, array1, array2, array_with_shape, scaler, var, Array, VBox};
+use dezero::{array0, array1, array2, array_with_shape, scaler, var, variable::VBox};
 
 macro_rules! square {
     ($x: expr) => {
@@ -225,17 +225,34 @@ fn mse_test() {
 #[test]
 fn sigmoid_test() {
     let x = scaler!(0.5);
-    let y = &F::sigmoid(&x.broadcast_to(&[10, 1]));
+    let x = &x.broadcast_to(&[10, 1]);
+    println!("{}", x);
+    let y = &F::sigmoid(x);
 
     y.backward();
-
-    println!("{}", x);
-    println!("{}", y);
 }
 
 #[test]
 fn broadcast_test() {
     let x = array1!(0..2);
-    dbg!(x.broadcast_to(&[2, 2]));
-    panic!()
+    assert_eq!(x.broadcast_to(&[2, 2]), array2!([[0, 1], [0, 1]]));
+}
+
+#[test]
+fn backward_test() {
+    let x = &VBox::new(array1!(0..10));
+    let y = &F::softmax(x, 0);
+
+    let t = &VBox::new(array1!([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
+
+    let loss = &F::cross_entropy_loss(y, t);
+    loss.backward();
+    println!("{}", x);
+
+    let delta = 1e-3;
+    let d_x = &VBox::new(array1!([0., 0., 0., 0., 0., 0., 0., 0., 0., delta]));
+    let d_loss = &F::cross_entropy_loss(&F::softmax(&(x + d_x), 0), t);
+    println!("{}", (d_loss.get_array() - loss.get_array()) / delta);
+
+    // panic!()
 }

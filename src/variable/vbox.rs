@@ -7,7 +7,7 @@ use std::{
 };
 
 use super::{Variable, WeakVBox};
-use crate::Array;
+use crate::array::Array;
 
 #[derive(Clone)]
 pub struct VBox(Rc<RefCell<Variable>>);

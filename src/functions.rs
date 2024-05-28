@@ -425,7 +425,7 @@ define!(CrossEnrtopy,);
 impl Function for CrossEnrtopy {
     impl_getters_setters!();
     fn forward(&self, x: Vec<Array>) -> Array {
-        -x[0].ln().matmul(&x[1].transpose()).sum()
+        -x[0].clip(1e-15, 1.).ln().matmul(&x[1].transpose()).sum()
     }
     fn backward(&self, gy: Array) -> Vec<Array> {
         let x: Vec<Array> = self
@@ -435,8 +435,9 @@ impl Function for CrossEnrtopy {
             .iter()
             .map(|x| x.get_array())
             .collect();
-        let gx = -&x[1] / &x[0];
-        let gt = -x[0].ln();
+        let cliped_x = &x[0].clip(1e-15, 1.);
+        let gx = -&x[1] / cliped_x;
+        let gt = -cliped_x.ln();
         vec![gx * &gy, gt * &gy]
     }
 }
