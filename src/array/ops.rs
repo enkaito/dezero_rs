@@ -19,7 +19,7 @@ impl Array {
         Array::new(data, self.shape.clone())
     }
 
-    define_map_functions!(exp, sin, cos, tanh, ln);
+    define_map_functions!(exp, ln, sin, cos, tan, sinh, cosh, tanh);
 
     pub fn powi(&self, n: i32) -> Array {
         let data = self.data.iter().map(|a| a.powi(n)).collect();

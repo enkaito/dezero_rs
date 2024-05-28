@@ -232,3 +232,10 @@ fn sigmoid_test() {
     println!("{}", x);
     println!("{}", y);
 }
+
+#[test]
+fn broadcast_test() {
+    let x = array1!(0..2);
+    dbg!(x.broadcast_to(&[2, 2]));
+    panic!()
+}

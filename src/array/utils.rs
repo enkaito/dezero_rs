@@ -20,7 +20,7 @@ macro_rules! inner {
     };
 }
 
-pub fn shape_after_broadcast(shape0: &[usize], shape1: &[usize]) -> Option<Vec<usize>> {
+pub(super) fn shape_after_broadcast(shape0: &[usize], shape1: &[usize]) -> Option<Vec<usize>> {
     let mut res = Vec::new();
     if shape0.len() <= shape1.len() {
         for (&n, &m) in std::iter::repeat(&1)
@@ -52,7 +52,7 @@ pub fn shape_after_broadcast(shape0: &[usize], shape1: &[usize]) -> Option<Vec<u
     Some(res)
 }
 
-pub fn broadcast_to(data: &[f32], old_shape: &[usize], new_shape: &[usize]) -> Vec<f32> {
+pub(super) fn broadcast_to(data: &[f32], old_shape: &[usize], new_shape: &[usize]) -> Vec<f32> {
     let mut axes = Vec::new();
     let mut dups = Vec::new();
     for (axis, (i, j)) in old_shape.iter().zip(new_shape.iter()).enumerate() {
@@ -70,7 +70,7 @@ pub fn broadcast_to(data: &[f32], old_shape: &[usize], new_shape: &[usize]) -> V
     let dim = new_shape.len();
 
     let mut chunk_sizes = vec![1];
-    for x in new_shape {
+    for x in new_shape.iter().rev() {
         chunk_sizes.push(chunk_sizes.last().unwrap() * x);
     }
 
@@ -84,7 +84,7 @@ pub fn broadcast_to(data: &[f32], old_shape: &[usize], new_shape: &[usize]) -> V
     data
 }
 
-pub fn matmul_2d(lhs: &[f32], rhs: &[f32], (l, m, n): (usize, usize, usize)) -> Vec<f32> {
+pub(super) fn matmul_2d(lhs: &[f32], rhs: &[f32], (l, m, n): (usize, usize, usize)) -> Vec<f32> {
     let mut data = Vec::with_capacity(l * n);
     for i in 0..l {
         for j in 0..n {
