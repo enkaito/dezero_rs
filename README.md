@@ -1,26 +1,31 @@
 # dezero_rs
 
-`dezero_rs` is a Rust-based clone of the `dezero` framework, which is originally designed for deep learning experiments. This project aims to replicate `dezero`'s functionalities in pure Rust, utilizing a minimal number of external crates.
+![dezero_rs Logo](image/logo.webp)
+
+`dezero_rs` is a Rust-based clone of the `dezero` framework, originally designed for deep learning experiments. This project is primarily an educational endeavor aimed at understanding and implementing deep learning frameworks in Rust. It serves as an experimental platform for my personal learning and exploration of both Rust programming and deep learning concepts.
+
+## Purpose
+
+- **Educational:** The primary goal of `dezero_rs` is educational. It is a means for me to dive deep into the intricacies of deep learning frameworks and how they can be implemented in a systems programming language like Rust.
+- **Experimental:** This project is experimental in nature. It allows for exploration of new ideas and techniques in the context of deep learning and Rust programming.
 
 ## Features
 
-- **Pure Rust Implementation:** `dezero_rs` is built entirely in Rust.
-- **Manual Linear Algebra:** Linear algebra operations are implemented manually using vectors. This approach, while educational, results in slower computation speeds.
+- **Pure Rust Implementation:** `dezero_rs` is built entirely in Rust, aiming to leverage the language's safety and performance characteristics for educational purposes.
+- **Manual Linear Algebra:** Linear algebra operations are implemented manually using vectors. This manual approach provides a deeper understanding of the underlying mathematics, albeit at the cost of slower computation speeds.
 
 ## Current Limitations
 
-- **Performance:** Due to the manual implementation of linear algebra components, `dezero_rs` suffers from performance issues, particularly in computation-intensive tasks.
-- **Learning Capability:** Currently, `dezero_rs` is unable to successfully learn from the MNIST dataset, a fundamental benchmark in machine learning for handwritten digit classification.
+- **Performance:** The manual implementation of linear algebra components results in performance issues, particularly in computation-intensive tasks. This limitation is acknowledged and accepted in the context of the project's educational objectives.
+- **Learning Capability:** Currently, `dezero_rs` struggles to successfully learn from the MNIST dataset, a fundamental benchmark in machine learning for handwritten digit classification. This challenge presents a valuable learning opportunity in debugging and improving machine learning algorithms.
 
 ## Contributions
 
-We welcome contributions to `dezero_rs`, especially in areas that could help overcome its current limitations:
+While `dezero_rs` is primarily for my personal educational purposes, contributions are welcome, especially from those interested in learning alongside me or offering insights that could enhance the project's educational value:
 
-- **Performance Optimization:** Suggestions and contributions that can speed up linear algebra operations or overall computation.
-- **Bug Fixes:** Identifying and resolving issues that prevent successful learning from the MNIST dataset.
-- **Feature Enhancement:** Adding features to more closely align with the original `dezero` framework's capabilities.
-
-For more information on contributing, please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+- **Educational Enhancements:** Suggestions that improve the understanding of deep learning or Rust programming.
+- **Performance Optimization:** Contributions that address performance bottlenecks without compromising the project's educational goals.
+- **Feature Expansion:** Adding features to more closely align with the original `dezero` framework's capabilities, enriching the learning experience.
 
 ## License
 
