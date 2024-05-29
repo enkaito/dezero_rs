@@ -1,3 +1,5 @@
+use ndarray::ArrayD;
+
 use super::{VBox, Variable};
 use crate::array::Array;
 use std::{cell::RefCell, rc::Weak};
@@ -14,12 +16,12 @@ impl WeakVBox {
         VBox::from_rc(self.0.upgrade().unwrap())
     }
 
-    pub fn get_array(&self) -> Array {
+    pub fn get_array(&self) -> ArrayD<f32> {
         let v = self.upgrade();
         v.get_array()
     }
 
-    pub fn get_grad(&self) -> Array {
+    pub fn get_grad(&self) -> ArrayD<f32> {
         let v = self.upgrade();
         v.get_grad()
     }

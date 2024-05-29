@@ -3,10 +3,10 @@ use ndarray::ArrayD;
 use crate::variable::{VBox, WeakVBox};
 use std::{hash::Hash, rc::Rc};
 
-pub fn call<const N: usize>(mut f: impl Function<N> + 'static, input: [VBox; N]) -> VBox {
-    let y = f.forward(input);
+pub fn call(mut f: impl Function + 'static, input: Vec<VBox>) -> VBox {
+    let y = f.forward(input.clone());
     let output = VBox::new(y);
-    f.set_inputs(input);
+    f.set_inputs(input.clone());
     f.set_output(output.clone().downgrade());
 
     if *crate::ENABLE_BACKPROP.lock().unwrap() {
@@ -58,17 +58,17 @@ fn sum_to(lhs: &ArrayD<f32>, shape: &[usize]) -> ArrayD<f32> {
 //     call(func, &[x.clone(), t.clone()])
 // }
 
-pub trait Function<const N: usize> {
+pub trait Function {
     fn get_generation(&self) -> u32;
-    fn get_inputs(&self) -> [VBox; N];
+    fn get_inputs(&self) -> Vec<VBox>;
     fn get_output(&self) -> WeakVBox;
 
     fn set_generation(&mut self, gen: u32);
-    fn set_inputs(&mut self, inputs: [VBox; N]);
+    fn set_inputs(&mut self, inputs: Vec<VBox>);
     fn set_output(&mut self, output: WeakVBox);
 
-    fn forward(&self, x: [VBox; N]) -> ArrayD<f32>;
-    fn backward(&self, gy: ArrayD<f32>) -> [ArrayD<f32>; N];
+    fn forward(&self, x: Vec<VBox>) -> ArrayD<f32>;
+    fn backward(&self, gy: ArrayD<f32>) -> Vec<ArrayD<f32>>;
 }
 
 macro_rules! impl_getters_setters {
@@ -77,7 +77,7 @@ macro_rules! impl_getters_setters {
             self.generation
         }
 
-        fn get_inputs(&self) -> [VBox; $n] {
+        fn get_inputs(&self) -> Vec<VBox> {
             self.inputs.clone().unwrap()
         }
 
@@ -89,7 +89,7 @@ macro_rules! impl_getters_setters {
             self.generation = gen
         }
 
-        fn set_inputs(&mut self, inputs: [VBox; $n]) {
+        fn set_inputs(&mut self, inputs: Vec<VBox>) {
             self.inputs = Some(inputs)
         }
 
@@ -102,7 +102,7 @@ macro_rules! impl_getters_setters {
 macro_rules! define {
     ($name: ident, $arity: literal, $($key: ident: $type: ty),*) => {
         pub struct $name {
-            inputs: Option<[VBox; $arity]>,
+            inputs: Option<Vec<VBox>>,
             output: Option<WeakVBox>,
             generation: u32,
             $(
@@ -132,12 +132,12 @@ macro_rules! define_binop {
 }
 
 define_binop!(Add);
-impl Function<2> for Add {
+impl Function for Add {
     impl_getters_setters!(2);
-    fn forward(&self, x: [VBox; 2]) -> ArrayD<f32> {
+    fn forward(&self, x: Vec<VBox>) -> ArrayD<f32> {
         &x[0].get_array() + &x[1].get_array()
     }
-    fn backward(&self, gy: ArrayD<f32>) -> [ArrayD<f32>; 2] {
+    fn backward(&self, gy: ArrayD<f32>) -> Vec<ArrayD<f32>> {
         // let gx0 = gy;
         // let gx1 = gy;
         // if self.shape0 != self.shape1 {
@@ -145,7 +145,7 @@ impl Function<2> for Add {
         // } else {
         //     [gy, gy]
         // }
-        [gy.clone(), gy]
+        vec![gy.clone(), gy]
     }
 }
 
@@ -448,14 +448,14 @@ impl Function<2> for Add {
 // }
 
 #[derive(Clone)]
-pub struct FnBox<const N: usize>(Rc<dyn Function<N>>);
+pub struct FnBox(Rc<dyn Function>);
 
-impl<const N: usize> FnBox<N> {
+impl FnBox {
     pub fn get_gen(&self) -> u32 {
         self.0.get_generation()
     }
 
-    pub fn get_inputs(&self) -> [VBox; N] {
+    pub fn get_inputs(&self) -> Vec<VBox> {
         self.0.get_inputs()
     }
 
@@ -463,13 +463,13 @@ impl<const N: usize> FnBox<N> {
         self.0.get_output()
     }
 
-    pub fn backward(&self, gy: ArrayD<f32>) -> [ArrayD<f32>; N] {
+    pub fn backward(&self, gy: ArrayD<f32>) -> Vec<ArrayD<f32>> {
         self.0.backward(gy)
     }
 }
 
-impl<const N: usize, const M: usize> PartialEq<FnBox<M>> for FnBox<N> {
-    fn eq(&self, other: &FnBox<M>) -> bool {
+impl PartialEq for FnBox {
+    fn eq(&self, other: &FnBox) -> bool {
         Rc::ptr_eq(&self.0, &other.0)
     }
 }

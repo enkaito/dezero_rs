@@ -1,8 +1,6 @@
 use super::VBox;
-use crate::{
-    functions::{self as F},
-    scaler,
-};
+use crate::functions as F;
+use ndarray::array;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 // impl VBox {
@@ -58,7 +56,7 @@ macro_rules! impl_op {
             type Output = VBox;
             fn $fname(self, rhs: VBox) -> Self::Output {
                 let func = F::$trait::new(self.get_shape(), rhs.get_shape());
-                F::call(func, [self, rhs]).clone()
+                F::call(func, vec![self, rhs]).clone()
             }
         }
 
@@ -86,58 +84,58 @@ macro_rules! impl_op {
         impl $trait<f32> for VBox {
             type Output = VBox;
             fn $fname(self, rhs: f32) -> Self::Output {
-                self.$fname(scaler!(rhs))
+                self.$fname(VBox::new(array![rhs]))
             }
         }
 
-        impl $trait<f32> for &VBox {
-            type Output = VBox;
-            fn $fname(self, rhs: f32) -> Self::Output {
-                self.$fname(crate::scaler!(rhs))
-            }
-        }
+        //     impl $trait<f32> for &VBox {
+        //         type Output = VBox;
+        //         fn $fname(self, rhs: f32) -> Self::Output {
+        //             self.$fname(crate::scaler!(rhs))
+        //         }
+        //     }
 
-        impl $trait<VBox> for f32 {
-            type Output = VBox;
-            fn $fname(self, rhs: VBox) -> Self::Output {
-                crate::scaler!(self).$fname(rhs)
-            }
-        }
+        //     impl $trait<VBox> for f32 {
+        //         type Output = VBox;
+        //         fn $fname(self, rhs: VBox) -> Self::Output {
+        //             crate::scaler!(self).$fname(rhs)
+        //         }
+        //     }
 
-        impl $trait<&VBox> for f32 {
-            type Output = VBox;
-            fn $fname(self, rhs: &VBox) -> Self::Output {
-                crate::scaler!(self).$fname(rhs)
-            }
-        }
+        //     impl $trait<&VBox> for f32 {
+        //         type Output = VBox;
+        //         fn $fname(self, rhs: &VBox) -> Self::Output {
+        //             crate::scaler!(self).$fname(rhs)
+        //         }
+        //     }
 
-        impl $trait<i32> for VBox {
-            type Output = VBox;
-            fn $fname(self, rhs: i32) -> Self::Output {
-                self.$fname(crate::scaler!(rhs))
-            }
-        }
+        //     impl $trait<i32> for VBox {
+        //         type Output = VBox;
+        //         fn $fname(self, rhs: i32) -> Self::Output {
+        //             self.$fname(crate::scaler!(rhs))
+        //         }
+        //     }
 
-        impl $trait<i32> for &VBox {
-            type Output = VBox;
-            fn $fname(self, rhs: i32) -> Self::Output {
-                self.$fname(crate::scaler!(rhs))
-            }
-        }
+        //     impl $trait<i32> for &VBox {
+        //         type Output = VBox;
+        //         fn $fname(self, rhs: i32) -> Self::Output {
+        //             self.$fname(crate::scaler!(rhs))
+        //         }
+        //     }
 
-        impl $trait<VBox> for i32 {
-            type Output = VBox;
-            fn $fname(self, rhs: VBox) -> Self::Output {
-                crate::scaler!(self).$fname(rhs)
-            }
-        }
+        //     impl $trait<VBox> for i32 {
+        //         type Output = VBox;
+        //         fn $fname(self, rhs: VBox) -> Self::Output {
+        //             crate::scaler!(self).$fname(rhs)
+        //         }
+        //     }
 
-        impl $trait<&VBox> for i32 {
-            type Output = VBox;
-            fn $fname(self, rhs: &VBox) -> Self::Output {
-                crate::scaler!(self).$fname(rhs)
-            }
-        }
+        //     impl $trait<&VBox> for i32 {
+        //         type Output = VBox;
+        //         fn $fname(self, rhs: &VBox) -> Self::Output {
+        //             crate::scaler!(self).$fname(rhs)
+        //         }
+        //     }
     };
 }
 
