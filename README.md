@@ -1,6 +1,6 @@
 # dezero_rs
 
-![dezero_rs Logo](image/logo.webp)
+<img src="image/logo.webp" alt="dezero_rs Logo" width="200" height="200">
 
 `dezero_rs` is a Rust-based clone of the `dezero` framework, originally designed for deep learning experiments. This project is primarily an educational endeavor aimed at understanding and implementing deep learning frameworks in Rust. It serves as an experimental platform for my personal learning and exploration of both Rust programming and deep learning concepts.
 
@@ -29,4 +29,4 @@ While `dezero_rs` is primarily for my personal educational purposes, contributio
 
 ## License
 
-`dezero_rs` is released under the MIT License. See the [LICENSE](LICENSE) file for more details.
+`dezero_rs` is released under the MIT License.
