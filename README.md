@@ -4,7 +4,7 @@
 
 ## Features
 
-- **Pure Rust Implementation:** `dezero_rs` is built entirely in Rust, aiming to leverage the language's safety and performance characteristics.
+- **Pure Rust Implementation:** `dezero_rs` is built entirely in Rust.
 - **Manual Linear Algebra:** Linear algebra operations are implemented manually using vectors. This approach, while educational, results in slower computation speeds.
 
 ## Current Limitations
