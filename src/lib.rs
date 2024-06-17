@@ -1,4 +1,3 @@
-pub mod array;
 pub mod functions;
 // pub mod layers;
 mod macros;

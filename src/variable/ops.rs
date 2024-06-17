@@ -1,6 +1,6 @@
 use super::VBox;
 use crate::functions as F;
-use ndarray::array;
+use ndarray::{Array, IxDyn};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 // impl VBox {
@@ -84,7 +84,7 @@ macro_rules! impl_op {
         impl $trait<f32> for VBox {
             type Output = VBox;
             fn $fname(self, rhs: f32) -> Self::Output {
-                self.$fname(VBox::new(array![rhs]))
+                self.$fname(VBox::new(Array::from_elem(IxDyn(&[]), rhs)))
             }
         }
 

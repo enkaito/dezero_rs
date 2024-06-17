@@ -1,4 +1,4 @@
-use ndarray::ArrayD;
+use ndarray::{Array, IxDyn};
 
 use crate::variable::{VBox, WeakVBox};
 use std::{hash::Hash, rc::Rc};
@@ -17,7 +17,7 @@ pub fn call(mut f: impl Function + 'static, input: Vec<VBox>) -> VBox {
     output
 }
 
-fn sum_to(lhs: &ArrayD<f32>, shape: &[usize]) -> ArrayD<f32> {
+fn sum_to(lhs: &Array<f32, IxDyn>, shape: &[usize]) -> Array<f32, IxDyn> {
     let ndim = shape.len();
     let lead = lhs.ndim() - ndim;
     todo!()
@@ -67,8 +67,8 @@ pub trait Function {
     fn set_inputs(&mut self, inputs: Vec<VBox>);
     fn set_output(&mut self, output: WeakVBox);
 
-    fn forward(&self, x: Vec<VBox>) -> ArrayD<f32>;
-    fn backward(&self, gy: ArrayD<f32>) -> Vec<ArrayD<f32>>;
+    fn forward(&self, x: Vec<VBox>) -> Array<f32, IxDyn>;
+    fn backward(&self, gy: Array<f32, IxDyn>) -> Vec<Array<f32, IxDyn>>;
 }
 
 macro_rules! impl_getters_setters {
@@ -134,10 +134,10 @@ macro_rules! define_binop {
 define_binop!(Add);
 impl Function for Add {
     impl_getters_setters!(2);
-    fn forward(&self, x: Vec<VBox>) -> ArrayD<f32> {
+    fn forward(&self, x: Vec<VBox>) -> Array<f32, IxDyn> {
         &x[0].get_array() + &x[1].get_array()
     }
-    fn backward(&self, gy: ArrayD<f32>) -> Vec<ArrayD<f32>> {
+    fn backward(&self, gy: Array<f32, IxDyn>) -> Vec<Array<f32, IxDyn>> {
         // let gx0 = gy;
         // let gx1 = gy;
         // if self.shape0 != self.shape1 {
@@ -463,7 +463,7 @@ impl FnBox {
         self.0.get_output()
     }
 
-    pub fn backward(&self, gy: ArrayD<f32>) -> Vec<ArrayD<f32>> {
+    pub fn backward(&self, gy: Array<f32, IxDyn>) -> Vec<Array<f32, IxDyn>> {
         self.0.backward(gy)
     }
 }
