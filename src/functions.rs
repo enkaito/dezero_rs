@@ -1,10 +1,10 @@
-use ndarray::{Array, IxDyn};
-
 use crate::variable::{VBox, WeakVBox};
-use std::{hash::Hash, rc::Rc};
+use crate::Array;
 
+use std::{hash::Hash, rc::Rc};
 pub fn call(mut f: impl Function + 'static, input: Vec<VBox>) -> VBox {
-    let y = f.forward(input.clone());
+    let xs = input.iter().map(|x| x.get_array()).collect();
+    let y = f.forward(xs);
     let output = VBox::new(y);
     f.set_inputs(input.clone());
     f.set_output(output.clone().downgrade());
@@ -17,7 +17,7 @@ pub fn call(mut f: impl Function + 'static, input: Vec<VBox>) -> VBox {
     output
 }
 
-fn sum_to(lhs: &Array<f32, IxDyn>, shape: &[usize]) -> Array<f32, IxDyn> {
+fn sum_to(lhs: &Array, shape: &[usize]) -> Array {
     let ndim = shape.len();
     let lead = lhs.ndim() - ndim;
     todo!()
@@ -67,12 +67,12 @@ pub trait Function {
     fn set_inputs(&mut self, inputs: Vec<VBox>);
     fn set_output(&mut self, output: WeakVBox);
 
-    fn forward(&self, x: Vec<VBox>) -> Array<f32, IxDyn>;
-    fn backward(&self, gy: Array<f32, IxDyn>) -> Vec<Array<f32, IxDyn>>;
+    fn forward(&self, x: Vec<Array>) -> Array;
+    fn backward(&self, gy: Array) -> Vec<Array>;
 }
 
 macro_rules! impl_getters_setters {
-    ($n: literal) => {
+    () => {
         fn get_generation(&self) -> u32 {
             self.generation
         }
@@ -133,86 +133,83 @@ macro_rules! define_binop {
 
 define_binop!(Add);
 impl Function for Add {
-    impl_getters_setters!(2);
-    fn forward(&self, x: Vec<VBox>) -> Array<f32, IxDyn> {
-        &x[0].get_array() + &x[1].get_array()
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        &x[0] + &x[1]
     }
-    fn backward(&self, gy: Array<f32, IxDyn>) -> Vec<Array<f32, IxDyn>> {
-        // let gx0 = gy;
-        // let gx1 = gy;
-        // if self.shape0 != self.shape1 {
-        //     vec![gx0.sum_to(&self.shape0), gx1.sum_to(&self.shape1)]
-        // } else {
-        //     [gy, gy]
-        // }
-        vec![gy.clone(), gy]
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        if self.shape0 != self.shape1 {
+            vec![sum_to(&gy, &self.shape0), sum_to(&gy, &self.shape1)]
+        } else {
+            vec![gy.clone(), gy]
+        }
     }
 }
 
-// define_binop!(Sub);
-// impl Function for Sub {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         &x[0] - &x[1]
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         let gx0 = gy.clone();
-//         let gx1 = -gy;
-//         if self.shape0 != self.shape1 {
-//             vec![gx0.sum_to(&self.shape0), gx1.sum_to(&self.shape1)]
-//         } else {
-//             vec![gx0, gx1]
-//         }
-//     }
-// }
+define_binop!(Sub);
+impl Function for Sub {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        &x[0] - &x[1]
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let gx0 = gy.clone();
+        let gx1 = -gy;
+        if self.shape0 != self.shape1 {
+            vec![sum_to(&gx0, &self.shape0), sum_to(&gx1, &self.shape1)]
+        } else {
+            vec![gx0, gx1]
+        }
+    }
+}
 
-// define_binop!(Mul);
-// impl Function for Mul {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         &x[0] * &x[1]
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         let x: Vec<Array> = self
-//             .inputs
-//             .as_ref()
-//             .unwrap()
-//             .iter()
-//             .map(|x| x.get_array())
-//             .collect();
-//         let gx0 = &x[1] * &gy;
-//         let gx1 = &x[0] * gy;
-//         if self.shape0 != self.shape1 {
-//             vec![gx0.sum_to(&self.shape0), gx1.sum_to(&self.shape1)]
-//         } else {
-//             vec![gx0, gx1]
-//         }
-//     }
-// }
+define_binop!(Mul);
+impl Function for Mul {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        &x[0] * &x[1]
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x: Vec<Array> = self
+            .inputs
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|x| x.get_array())
+            .collect();
+        let gx0 = &x[1] * &gy;
+        let gx1 = &x[0] * gy;
+        if self.shape0 != self.shape1 {
+            vec![sum_to(&gx0, &self.shape0), sum_to(&gx1, &self.shape1)]
+        } else {
+            vec![gx0, gx1]
+        }
+    }
+}
 
-// define_binop!(Div);
-// impl Function for Div {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         &x[0] / &x[1]
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         let x: Vec<Array> = self
-//             .inputs
-//             .as_ref()
-//             .unwrap()
-//             .iter()
-//             .map(|x| x.get_array())
-//             .collect();
-//         let gx0 = &gy / &x[1];
-//         let gx1 = -&x[0] / (&x[1] * &x[1]) * gy;
-//         if self.shape0 != self.shape1 {
-//             vec![gx0.sum_to(&self.shape0), gx1.sum_to(&self.shape1)]
-//         } else {
-//             vec![gx0, gx1]
-//         }
-//     }
-// }
+define_binop!(Div);
+impl Function for Div {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        &x[0] / &x[1]
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x: Vec<Array> = self
+            .inputs
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|x| x.get_array())
+            .collect();
+        let gx0 = &gy / &x[1];
+        let gx1 = -&x[0] / (&x[1] * &x[1]) * gy;
+        if self.shape0 != self.shape1 {
+            vec![sum_to(&gx0, &self.shape0), sum_to(&gx1, &self.shape1)]
+        } else {
+            vec![gx0, gx1]
+        }
+    }
+}
 
 // define!(Neg,);
 // impl Function for Neg {
@@ -463,7 +460,7 @@ impl FnBox {
         self.0.get_output()
     }
 
-    pub fn backward(&self, gy: Array<f32, IxDyn>) -> Vec<Array<f32, IxDyn>> {
+    pub fn backward(&self, gy: Array) -> Vec<Array> {
         self.0.backward(gy)
     }
 }

@@ -1,12 +1,13 @@
-use ndarray::ArrayD;
-
 use crate::functions::FnBox;
+use ndarray::{Array as A, IxDyn};
 use std::{
     cell::RefCell,
     collections::{BinaryHeap, HashSet},
     hash::Hash,
     rc::Rc,
 };
+
+type Array = A<f32, IxDyn>;
 
 use super::{Variable, WeakVBox};
 
@@ -28,7 +29,7 @@ impl Hash for VBox {
 }
 
 impl VBox {
-    pub fn new(array: ArrayD<f32>) -> VBox {
+    pub fn new(array: Array) -> VBox {
         VBox(Rc::new(RefCell::new(Variable {
             array,
             grad: None,
@@ -41,7 +42,7 @@ impl VBox {
         VBox(rc)
     }
 
-    pub fn get_array(&self) -> ArrayD<f32> {
+    pub fn get_array(&self) -> Array {
         let v = self.0.as_ref();
         v.borrow().array.clone()
     }
@@ -51,12 +52,12 @@ impl VBox {
         v.borrow().array.shape().to_vec()
     }
 
-    pub fn get_grad(&self) -> ArrayD<f32> {
+    pub fn get_grad(&self) -> Array {
         let v = self.0.as_ref();
         v.borrow().grad.clone().unwrap()
     }
 
-    pub fn get_option_grad(&self) -> Option<ArrayD<f32>> {
+    pub fn get_option_grad(&self) -> Option<Array> {
         let v = self.0.as_ref();
         v.borrow().grad.clone()
     }
@@ -69,12 +70,12 @@ impl VBox {
         self.0.clone().borrow().generation
     }
 
-    pub fn set_array(&self, data: ArrayD<f32>) {
+    pub fn set_array(&self, data: Array) {
         let v = self.0.as_ref();
         v.borrow_mut().array = data;
     }
 
-    pub fn set_grad(&self, grad: ArrayD<f32>) {
+    pub fn set_grad(&self, grad: Array) {
         let v = self.0.as_ref();
         match &mut v.borrow_mut().grad {
             Some(grad_old) => *grad_old = grad,
@@ -100,7 +101,8 @@ impl VBox {
 
     pub fn backward_with_option(&self, retain_grad: bool) {
         if self.get_option_grad().is_none() {
-            self.set_grad(ArrayD::ones(self.0.borrow().array.raw_dim()));
+            let shape = self.0.borrow().array.raw_dim();
+            self.set_grad(Array::ones(shape));
         }
 
         let mut funcs = BinaryHeap::new();
@@ -145,12 +147,11 @@ impl VBox {
 
 impl std::fmt::Display for VBox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut string = format!("Variable({}", self.get_array().to_string());
+        let mut string = format!("Variable(\n{}", self.get_array());
         match self.get_option_grad() {
             None => {}
-            Some(g) => string += &format!(",\n   grad: {}", g.to_string()),
+            Some(g) => string += &format!(",\ngrad:\n{}", g.to_string()),
         }
-        string += ")";
-        write!(f, "{}", string)
+        write!(f, "{}\n)", string)
     }
 }

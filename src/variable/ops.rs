@@ -140,9 +140,9 @@ macro_rules! impl_op {
 }
 
 impl_op!(Add, add);
-// impl_op!(Mul, mul);
-// impl_op!(Sub, sub);
-// impl_op!(Div, div);
+impl_op!(Mul, mul);
+impl_op!(Sub, sub);
+impl_op!(Div, div);
 
 // impl Neg for VBox {
 //     type Output = VBox;
