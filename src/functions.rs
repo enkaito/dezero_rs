@@ -1,12 +1,15 @@
+use ndarray::{prelude::*, IxDyn};
+
+use crate::array0;
 use crate::variable::{VBox, WeakVBox};
 use crate::Array;
 
 use std::{hash::Hash, rc::Rc};
-pub fn call(mut f: impl Function + 'static, input: Vec<VBox>) -> VBox {
+pub fn call(mut f: impl Function + 'static, input: &[VBox]) -> VBox {
     let xs = input.iter().map(|x| x.get_array()).collect();
     let y = f.forward(xs);
     let output = VBox::new(y);
-    f.set_inputs(input.clone());
+    f.set_inputs(input.to_vec());
     f.set_output(output.clone().downgrade());
 
     if *crate::ENABLE_BACKPROP.lock().unwrap() {
@@ -23,15 +26,15 @@ fn sum_to(lhs: &Array, shape: &[usize]) -> Array {
     todo!()
 }
 
-// pub fn linear(x: &VBox, w: &VBox, b: Option<&VBox>) -> VBox {
-//     let bias = b.is_some();
-//     let func = Linear::new(bias);
-//     if bias {
-//         call(func, &[x.clone(), w.clone(), b.unwrap().clone()])
-//     } else {
-//         call(func, &[x.clone(), w.clone()])
-//     }
-// }
+pub fn linear(x: &VBox, w: &VBox, b: Option<&VBox>) -> VBox {
+    let bias = b.is_some();
+    let func = Linear::new(bias);
+    if bias {
+        call(func, &[x.clone(), w.clone(), b.unwrap().clone()])
+    } else {
+        call(func, &[x.clone(), w.clone()])
+    }
+}
 
 // pub fn sigmoid(x: &VBox) -> VBox {
 //     let func = Sigmoid::new();
@@ -100,7 +103,7 @@ macro_rules! impl_getters_setters {
 }
 
 macro_rules! define {
-    ($name: ident, $arity: literal, $($key: ident: $type: ty),*) => {
+    ($name: ident, $($key: ident: $type: ty),*) => {
         pub struct $name {
             inputs: Option<Vec<VBox>>,
             output: Option<WeakVBox>,
@@ -127,7 +130,7 @@ macro_rules! define {
 
 macro_rules! define_binop {
     ($name: ident) => {
-        define!($name, 2, shape0: Vec<usize>, shape1: Vec<usize>);
+        define!($name, shape0: Vec<usize>, shape1: Vec<usize>);
     };
 }
 
@@ -211,157 +214,160 @@ impl Function for Div {
     }
 }
 
-// define!(Neg,);
-// impl Function for Neg {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         -x[0].clone()
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         vec![-gy]
-//     }
-// }
+define!(Neg,);
+impl Function for Neg {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        -x[0].clone()
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        vec![-gy]
+    }
+}
 
-// define!(Powi, n: i32);
-// impl Function for Powi {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].powi(self.n)
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         let x = self.inputs.as_ref().unwrap().first().unwrap().get_array();
-//         vec![self.n as f32 * x.powi(self.n - 1) * gy]
-//     }
-// }
+define!(Powi, n: i32);
+impl Function for Powi {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        x[0].map(|e| e.powi(self.n))
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x = self.inputs.as_ref().unwrap().first().unwrap().get_array();
+        vec![self.n as f32 * x.map(|e| e.powi(self.n - 1)) * gy]
+    }
+}
 
-// define!(Powf, c: f32);
-// impl Function for Powf {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].powf(self.c)
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         let x = self.inputs.as_ref().unwrap().first().unwrap().get_array();
-//         vec![self.c * x.powf(self.c - 1.) * gy]
-//     }
-// }
+define!(Powf, c: f32);
+impl Function for Powf {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        x[0].map(|e| e.powf(self.c))
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x = self.inputs.as_ref().unwrap().first().unwrap().get_array();
+        vec![self.c as f32 * x.map(|e| e.powf(self.c - 1.)) * gy]
+    }
+}
 
-// define!(Exp,);
-// impl Function for Exp {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].exp()
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         let x = self.inputs.as_ref().unwrap().first().unwrap().get_array();
-//         vec![x.exp() * gy]
-//     }
-// }
+define!(Exp,);
+impl Function for Exp {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        x[0].map(|e| e.exp())
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x = self.inputs.as_ref().unwrap().first().unwrap().get_array();
+        vec![x.map(|e| e.exp()) * gy]
+    }
+}
 
-// define!(Reshape, shape_in: Vec<usize>, shape_out: Vec<usize>);
-// impl Function for Reshape {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].clone().reshape(&self.shape_out)
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         vec![gy.reshape(&self.shape_in)]
-//     }
-// }
+define!(Reshape, shape_in: Vec<usize>, shape_out: Vec<usize>);
+impl Function for Reshape {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        x[0].clone().into_shape(IxDyn(&self.shape_out)).unwrap()
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        vec![gy.into_shape(IxDyn(&self.shape_in)).unwrap()]
+    }
+}
 
-// define!(Transpose,);
-// impl Function for Transpose {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].clone().transpose()
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         vec![gy.transpose()]
-//     }
-// }
+define!(Transpose,);
+impl Function for Transpose {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        x[0].clone().reversed_axes()
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        vec![gy.reversed_axes()]
+    }
+}
 
-// define!(Sum, shape: Vec<usize>);
-// impl Function for Sum {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].sum()
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         vec![gy.broadcast_to(&self.shape)]
-//     }
-// }
+define!(Sum, shape: Vec<usize>);
+impl Function for Sum {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        array0!(x[0].sum())
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        vec![gy.broadcast(IxDyn(&self.shape)).unwrap().to_owned()]
+    }
+}
 
-// define!(SumTo, shape_in: Vec<usize>, shape_out: Vec<usize>);
-// impl Function for SumTo {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].clone().sum_to(&self.shape_out)
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         vec![gy.broadcast_to(&self.shape_in)]
-//     }
-// }
+define!(SumTo, shape_in: Vec<usize>, shape_out: Vec<usize>);
+impl Function for SumTo {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        sum_to(&x[0], &self.shape_out)
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        vec![gy.broadcast(IxDyn(&self.shape_in)).unwrap().to_owned()]
+    }
+}
 
-// define!(BroadcastTo, shape_in: Vec<usize>, shape_out: Vec<usize>);
-// impl Function for BroadcastTo {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].clone().broadcast_to(&self.shape_out)
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         vec![gy.sum_to(&self.shape_in)]
-//     }
-// }
+define!(BroadcastTo, shape_in: Vec<usize>, shape_out: Vec<usize>);
+impl Function for BroadcastTo {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        x[0].clone()
+            .broadcast(IxDyn(&self.shape_out))
+            .unwrap()
+            .to_owned()
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        vec![sum_to(&gy, &self.shape_in)]
+    }
+}
 
-// define!(Matmul,);
-// impl Function for Matmul {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         x[0].matmul(&x[1])
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         let x: Vec<Array> = self
-//             .inputs
-//             .as_ref()
-//             .unwrap()
-//             .iter()
-//             .map(|x| x.get_array())
-//             .collect();
-//         vec![
-//             gy.matmul(&x[1].clone().transpose()),
-//             x[0].clone().transpose().matmul(&gy),
-//         ]
-//     }
-// }
+define!(Matmul,);
+impl Function for Matmul {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        &x[0].dot(&x[1])
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x: Vec<Array> = self
+            .inputs
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|x| x.get_array())
+            .collect();
+        vec![
+            gy.dot(&x[1].clone().transpose()),
+            x[0].clone().transpose().dot(&gy),
+        ]
+    }
+}
 
-// define!(Linear, bias: bool);
-// impl Function for Linear {
-//     impl_getters_setters!();
-//     fn forward(&self, x: Vec<Array>) -> Array {
-//         let t = x[0].matmul(&x[1]);
-//         if self.bias {
-//             t + &x[2]
-//         } else {
-//             t
-//         }
-//     }
-//     fn backward(&self, gy: Array) -> Vec<Array> {
-//         let x: Vec<Array> = self
-//             .inputs
-//             .as_ref()
-//             .unwrap()
-//             .iter()
-//             .map(|x| x.get_array())
-//             .collect();
-//         let gx = gy.matmul(&x[1].clone().transpose());
-//         let gw = x[0].clone().transpose().matmul(&gy);
-//         if self.bias {
-//             vec![gx, gw, gy.sum_to(&x[2].get_shape())]
-//         } else {
-//             vec![gx, gw]
-//         }
-//     }
-// }
+define!(Linear, bias: bool);
+impl Function for Linear {
+    impl_getters_setters!();
+    fn forward(&self, x: Vec<Array>) -> Array {
+        let t = x[0].dot(&x[1]);
+        if self.bias {
+            t + &x[2]
+        } else {
+            t
+        }
+    }
+    fn backward(&self, gy: Array) -> Vec<Array> {
+        let x: Vec<Array> = self
+            .inputs
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|x| x.get_array())
+            .collect();
+        let gx = gy.dot(&x[1].clone().transpose());
+        let gw = x[0].clone().transpose().dot(&gy);
+        if self.bias {
+            vec![gx, gw, gy.sum_to(&x[2].get_shape())]
+        } else {
+            vec![gx, gw]
+        }
+    }
+}
 
 // define!(Sigmoid,);
 // impl Function for Sigmoid {

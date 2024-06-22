@@ -148,9 +148,8 @@ impl VBox {
 impl std::fmt::Display for VBox {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut string = format!("Variable(\n{}", self.get_array());
-        match self.get_option_grad() {
-            None => {}
-            Some(g) => string += &format!(",\ngrad:\n{}", g.to_string()),
+        if let Some(g) = self.get_option_grad() {
+            string += &format!(",\ngrad:\n{}", g.to_string())
         }
         write!(f, "{}\n)", string)
     }

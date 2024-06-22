@@ -1,11 +1,4 @@
-use dezero::variable::VBox;
-use ndarray::{Array, IxDyn};
-
-macro_rules! array {
-    ($data: expr, $shape: expr) => {
-        Array::from_shape_vec(IxDyn($shape), $data).unwrap()
-    };
-}
+use dezero::{array, variable::VBox};
 
 fn main() {
     let x = &VBox::new(array!(vec![1., 2., 3., 4.], &[2, 2]));
